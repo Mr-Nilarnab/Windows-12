@@ -53,8 +53,6 @@ This project is built from scratch without any heavy frontend frameworks.
 
 Because this project uses vanilla web technologies, running it is incredibly simple. No package managers or build steps required.
 
-1. Clone the repository:
-```bash
    git clone [https://github.com/Mr-Nilarnab/Windows-12.git](https://github.com/Mr-Nilarnab/Windows-12.git)
 ⚠️ Disclaimer
 This is a conceptual fan-made project built for educational and portfolio purposes. It is not an actual operating system, nor is it affiliated with, endorsed by, or associated with Microsoft Corporation. Windows, Copilot, and Microsoft Edge are trademarks of Microsoft.
