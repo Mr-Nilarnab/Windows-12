@@ -8,11 +8,7 @@
 <p align="center">
   <img src="https://github.com/Mr-Nilarnab/Windows-12/blob/main/IMG-20260624-WA0006.jpg?raw=true" width="100%" alt="Start Menu and UI"/>
 </p>
-<h3 align="center">🎥 Watch the Full Demo on YouTube</h3>
-<p align="center">
-  <a href="YOUR_YOUTUBE_LINK_HERE" target="_blank"><b>▶️ Click here to see Windows 12 in action</b></a>
-</p>
-
+link=https://youtu.be/KV2z34cdUS8?si=NjgJyGg9GBFHVWzE
 ---
 
 # Windows 12 Web Concept — Copilot+ AI PC 🚀
