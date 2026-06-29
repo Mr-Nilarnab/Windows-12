@@ -1,0 +1,2553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Windows 12 — Copilot+ AI PC</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;user-select:none;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#000;overflow:hidden;width:100vw;height:100vh;}
+:root{
+  --taskbar-h:56px;
+  --radius:14px;
+  --accent:#4fc3f7;
+  --accent2:#7c6fff;
+  --accent3:#00e5ff;
+  --glass:rgba(10,16,40,0.85);
+  --glass-light:rgba(255,255,255,0.06);
+  --text:#eef4ff;
+  --text-muted:rgba(200,215,245,0.65);
+  --border:rgba(255,255,255,0.10);
+  --shadow:0 32px 80px rgba(0,0,0,0.8);
+}
+
+/* ══════════════════════════════════════════
+   LOCKSCREEN
+══════════════════════════════════════════ */
+#lockscreen{
+  position:fixed;inset:0;z-index:9999;overflow:hidden;
+  cursor:pointer;transition:opacity 0.7s ease;
+}
+#lockscreen.hide{opacity:0;pointer-events:none;}
+#ls-bg{position:absolute;inset:0;}
+#ls-canvas{position:absolute;inset:0;}
+.ls-content{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:4px;
+  background:linear-gradient(180deg,transparent 40%,rgba(0,0,0,0.6) 100%);
+}
+.ls-time{
+  font-size:clamp(5rem,14vw,9rem);font-weight:100;color:#fff;
+  letter-spacing:-4px;line-height:1;
+  text-shadow:0 0 60px rgba(79,195,247,0.4);
+  animation:ls-glow 4s ease-in-out infinite;
+}
+@keyframes ls-glow{0%,100%{text-shadow:0 0 60px rgba(79,195,247,0.3);}50%{text-shadow:0 0 100px rgba(79,195,247,0.7),0 0 40px rgba(124,111,255,0.4);}}
+.ls-date{font-size:1.15rem;color:rgba(255,255,255,0.8);margin:6px 0 48px;font-weight:300;letter-spacing:0.05em;}
+.ls-hint{
+  font-size:0.78rem;color:rgba(255,255,255,0.45);letter-spacing:0.2em;
+  text-transform:uppercase;animation:ls-pulse 2.5s ease-in-out infinite;
+}
+@keyframes ls-pulse{0%,100%{opacity:0.3;transform:translateY(0);}50%{opacity:0.8;transform:translateY(-3px);}}
+.ls-orbs{position:absolute;inset:0;pointer-events:none;}
+.ls-orb{
+  position:absolute;border-radius:50%;filter:blur(60px);
+  animation:ls-float 8s ease-in-out infinite;
+}
+@keyframes ls-float{0%,100%{transform:translate(0,0) scale(1);}33%{transform:translate(30px,-20px) scale(1.1);}66%{transform:translate(-20px,15px) scale(0.95);}}
+
+/* ══════════════════════════════════════════
+   DESKTOP & WALLPAPER
+══════════════════════════════════════════ */
+#desktop{
+  position:fixed;inset:0;z-index:1;overflow:hidden;
+  background:#040812;
+}
+#wallpaper-canvas{position:absolute;inset:0;z-index:0;}
+#particle-canvas{position:absolute;inset:0;z-index:1;pointer-events:none;}
+.desktop-overlay{
+  position:absolute;inset:0;z-index:2;pointer-events:none;
+  background:radial-gradient(ellipse 120% 80% at 50% 60%,transparent 30%,rgba(4,8,18,0.5) 100%);
+}
+
+/* ══════════════════════════════════════════
+   DESKTOP ICONS
+══════════════════════════════════════════ */
+.desk-icons{
+  position:absolute;top:28px;left:24px;
+  display:grid;grid-template-columns:repeat(2,80px);
+  gap:8px;z-index:10;
+}
+.desk-icon{
+  display:flex;flex-direction:column;align-items:center;gap:7px;
+  cursor:pointer;padding:10px 6px;border-radius:12px;
+  transition:background 0.2s,transform 0.2s,box-shadow 0.2s;
+  width:80px;position:relative;
+}
+.desk-icon:hover{
+  background:rgba(255,255,255,0.10);
+  transform:translateY(-3px) scale(1.04);
+  box-shadow:0 8px 24px rgba(0,0,0,0.4);
+}
+.desk-icon:active{transform:scale(0.95);}
+.desk-icon.selected{background:rgba(79,195,247,0.15);outline:1px solid rgba(79,195,247,0.4);}
+.desk-icon .ico{
+  font-size:2.2rem;line-height:1;
+  filter:drop-shadow(0 4px 8px rgba(0,0,0,0.5));
+  transition:transform 0.2s;
+}
+.desk-icon:hover .ico{transform:scale(1.1);}
+.desk-icon span{
+  font-size:0.67rem;color:var(--text);text-align:center;
+  text-shadow:0 1px 6px rgba(0,0,0,0.9),0 0 12px rgba(0,0,0,0.8);
+  line-height:1.3;word-break:break-word;
+}
+
+/* ══════════════════════════════════════════
+   TASKBAR
+══════════════════════════════════════════ */
+#taskbar{
+  position:fixed;bottom:10px;left:50%;transform:translateX(-50%);
+  z-index:1000;
+  background:rgba(8,14,35,0.75);
+  backdrop-filter:blur(40px) saturate(200%) brightness(1.1);
+  -webkit-backdrop-filter:blur(40px);
+  border:1px solid rgba(255,255,255,0.12);
+  border-top:1px solid rgba(255,255,255,0.18);
+  border-radius:22px;
+  height:var(--taskbar-h);
+  display:flex;align-items:center;
+  padding:0 14px;gap:3px;
+  box-shadow:
+    0 8px 40px rgba(0,0,0,0.7),
+    inset 0 1px 0 rgba(255,255,255,0.10),
+    0 0 0 1px rgba(0,0,0,0.3);
+  transition:all 0.3s;
+}
+#taskbar::before{
+  content:'';position:absolute;inset:0;border-radius:22px;
+  background:linear-gradient(180deg,rgba(255,255,255,0.06) 0%,transparent 100%);
+  pointer-events:none;
+}
+.tb-btn{
+  width:44px;height:42px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:1.25rem;transition:all 0.18s;
+  position:relative;flex-shrink:0;
+}
+.tb-btn:hover{background:rgba(255,255,255,0.12);transform:scale(1.08);}
+.tb-btn:active{background:rgba(255,255,255,0.18);transform:scale(0.93);}
+.tb-btn.active::after{
+  content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);
+  width:18px;height:3px;border-radius:2px;background:var(--accent);
+  box-shadow:0 0 8px var(--accent);
+}
+.tb-btn .tb-badge{
+  position:absolute;top:4px;right:4px;
+  width:8px;height:8px;border-radius:50%;
+  background:#f04;box-shadow:0 0 6px rgba(255,0,68,0.8);
+}
+.tb-sep{width:1px;height:32px;background:var(--border);margin:0 6px;flex-shrink:0;}
+.tb-clock-area{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-width:56px;padding:0 10px;cursor:pointer;
+  font-size:0.68rem;color:var(--text);line-height:1.5;
+}
+.tb-clock-area .time{font-size:0.84rem;font-weight:600;}
+.tb-search{
+  display:flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,0.07);
+  border:1px solid rgba(255,255,255,0.10);
+  border-radius:12px;height:36px;padding:0 14px;
+  min-width:160px;cursor:text;
+  font-size:0.8rem;color:var(--text-muted);
+  transition:all 0.2s;
+}
+.tb-search:hover{background:rgba(255,255,255,0.12);border-color:rgba(79,195,247,0.3);}
+.tb-running{display:flex;align-items:center;gap:2px;flex-wrap:nowrap;max-width:300px;}
+.win-logo{display:grid;grid-template-columns:1fr 1fr;gap:2.5px;width:20px;height:20px;}
+.win-logo div{border-radius:3px;}
+
+/* START MENU */
+#start-menu{
+  position:fixed;bottom:76px;left:50%;transform:translateX(-50%) translateY(12px) scale(0.96);
+  transform-origin:bottom center;
+  z-index:999;
+  background:rgba(8,14,38,0.92);
+  backdrop-filter:blur(50px) saturate(220%);
+  border:1px solid rgba(255,255,255,0.13);
+  border-bottom:1px solid rgba(255,255,255,0.06);
+  border-radius:24px;
+  width:min(700px,96vw);
+  padding:26px;
+  box-shadow:0 -8px 60px rgba(0,0,0,0.7),0 0 0 1px rgba(255,255,255,0.04);
+  opacity:0;pointer-events:none;
+  transition:all 0.28s cubic-bezier(0.34,1.56,0.64,1);
+}
+#start-menu.open{opacity:1;pointer-events:all;transform:translateX(-50%) translateY(0) scale(1);}
+#start-menu::before{
+  content:'';position:absolute;inset:0;border-radius:24px;pointer-events:none;
+  background:linear-gradient(160deg,rgba(79,195,247,0.05) 0%,transparent 50%,rgba(124,111,255,0.04) 100%);
+}
+.sm-search{
+  display:flex;align-items:center;gap:10px;
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius:14px;padding:11px 18px;margin-bottom:22px;
+  transition:border-color 0.2s,background 0.2s;
+}
+.sm-search:focus-within{border-color:rgba(79,195,247,0.4);background:rgba(79,195,247,0.04);}
+.sm-search input{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:0.97rem;}
+.sm-search input::placeholder{color:var(--text-muted);}
+.sm-label{font-size:0.7rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:14px;}
+.sm-apps{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-bottom:22px;}
+.sm-app{
+  display:flex;flex-direction:column;align-items:center;gap:7px;
+  padding:11px 6px;border-radius:12px;cursor:pointer;
+  transition:all 0.18s;
+}
+.sm-app:hover{background:rgba(255,255,255,0.09);transform:translateY(-2px);}
+.sm-app:active{background:rgba(255,255,255,0.15);transform:scale(0.95);}
+.sm-app .ico{font-size:1.85rem;line-height:1;transition:transform 0.18s;}
+.sm-app:hover .ico{transform:scale(1.15);}
+.sm-app span{font-size:0.65rem;color:var(--text);text-align:center;line-height:1.3;}
+.sm-rec-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.sm-rec-item{
+  display:flex;align-items:center;gap:10px;
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);
+  border-radius:12px;padding:10px 13px;cursor:pointer;transition:all 0.18s;
+}
+.sm-rec-item:hover{background:rgba(255,255,255,0.09);}
+.sm-rec-item .ico{font-size:1.3rem;}
+.sm-rec-info .name{font-size:0.8rem;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sm-rec-info .sub{font-size:0.67rem;color:var(--text-muted);}
+.sm-footer{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08);
+}
+.sm-user{display:flex;align-items:center;gap:10px;cursor:pointer;border-radius:10px;padding:6px 10px;transition:background 0.15s;}
+.sm-user:hover{background:rgba(255,255,255,0.07);}
+.sm-avatar{
+  width:36px;height:36px;border-radius:50%;
+  background:linear-gradient(135deg,#4fc3f7,#7c6fff);
+  display:flex;align-items:center;justify-content:center;font-size:0.9rem;color:#fff;font-weight:600;
+  box-shadow:0 0 14px rgba(79,195,247,0.4);
+}
+.sm-username{font-size:0.9rem;color:var(--text);font-weight:500;}
+.sm-power-btns{display:flex;gap:8px;}
+.sm-power-btn{
+  width:38px;height:38px;border-radius:10px;
+  background:rgba(255,255,255,0.06);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:1rem;cursor:pointer;transition:all 0.15s;
+}
+.sm-power-btn:hover{background:rgba(255,80,80,0.15);border-color:rgba(255,80,80,0.3);}
+
+/* WINDOWS */
+.win{
+  position:fixed;z-index:100;
+  background:rgba(8,14,38,0.90);
+  backdrop-filter:blur(40px) saturate(180%);
+  border:1px solid rgba(255,255,255,0.11);
+  border-top:1px solid rgba(255,255,255,0.18);
+  border-radius:18px;
+  box-shadow:var(--shadow),0 0 0 1px rgba(0,0,0,0.4);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+  min-width:300px;min-height:200px;
+  transition:box-shadow 0.2s;
+}
+.win::before{
+  content:'';position:absolute;inset:0;pointer-events:none;border-radius:18px;
+  background:linear-gradient(180deg,rgba(255,255,255,0.04) 0%,transparent 40%);
+}
+.win.focused{z-index:200;box-shadow:0 40px 100px rgba(0,0,0,0.9),0 0 0 1px rgba(79,195,247,0.15),0 0 40px rgba(79,195,247,0.04);}
+.win.minimized{display:none;}
+.win.maximized{border-radius:0!important;border:none!important;}
+.win-titlebar{
+  display:flex;align-items:center;
+  height:46px;padding:0 16px;
+  flex-shrink:0;cursor:move;
+  background:rgba(255,255,255,0.025);
+  border-bottom:1px solid rgba(255,255,255,0.07);
+}
+.win-icon-small{font-size:1.1rem;margin-right:9px;}
+.win-title{flex:1;font-size:0.86rem;color:var(--text);font-weight:500;pointer-events:none;}
+.win-controls{display:flex;gap:7px;margin-left:auto;}
+.wc-btn{
+  width:30px;height:30px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:0.85rem;cursor:pointer;
+  transition:all 0.15s;color:var(--text-muted);
+}
+.wc-btn:hover{background:rgba(255,255,255,0.12);color:var(--text);}
+.wc-btn.close:hover{background:#c42b1c;color:#fff;}
+.win-body{flex:1;overflow:auto;position:relative;}
+
+/* WIDGET PANEL */
+#widget-panel{
+  position:fixed;top:0;left:0;width:380px;height:100vh;
+  background:rgba(6,11,30,0.93);
+  backdrop-filter:blur(50px);
+  border-right:1px solid rgba(255,255,255,0.08);
+  z-index:800;padding:24px 16px;overflow-y:auto;
+  transform:translateX(-100%);
+  transition:transform 0.32s cubic-bezier(0.4,0,0.2,1);
+}
+#widget-panel.open{transform:translateX(0);}
+.wp-clock{text-align:center;margin-bottom:28px;padding:20px 0;}
+.wp-time{font-size:4rem;font-weight:100;color:var(--text);line-height:1;text-shadow:0 0 40px rgba(79,195,247,0.3);}
+.wp-date{font-size:0.92rem;color:var(--text-muted);margin-top:6px;}
+.widget-card{
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:18px;padding:18px;margin-bottom:12px;
+  transition:border-color 0.2s,background 0.2s;
+}
+.widget-card:hover{background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.12);}
+.wc-title{font-size:0.7rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;}
+.wc-weather{display:flex;align-items:center;gap:14px;}
+.wc-temp{font-size:2.8rem;font-weight:100;color:var(--text);}
+.wc-weather-info{font-size:0.82rem;color:var(--text-muted);}
+.wc-weather-info .city{font-size:1rem;color:var(--text);font-weight:500;margin-bottom:3px;}
+.news-item{padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;transition:padding-left 0.15s;}
+.news-item:hover{padding-left:6px;}
+.news-item:last-child{border-bottom:none;}
+.news-item .headline{font-size:0.83rem;color:var(--text);line-height:1.45;}
+.news-item .source{font-size:0.7rem;color:var(--text-muted);margin-top:3px;}
+.quick-toggle{display:flex;flex-wrap:wrap;gap:8px;}
+.qt-item{
+  background:rgba(255,255,255,0.06);border:1px solid var(--border);
+  border-radius:12px;padding:8px 13px;cursor:pointer;
+  font-size:0.78rem;color:var(--text);
+  display:flex;align-items:center;gap:6px;
+  transition:all 0.15s;
+}
+.qt-item:hover{background:rgba(255,255,255,0.12);}
+.qt-item.on{background:rgba(79,195,247,0.15);border-color:rgba(79,195,247,0.35);color:#4fc3f7;}
+
+/* COPILOT PANEL */
+#copilot-panel{
+  position:fixed;bottom:76px;right:16px;
+  width:360px;
+  background:rgba(8,13,36,0.94);
+  backdrop-filter:blur(50px);
+  border:1px solid rgba(79,195,247,0.18);
+  border-radius:22px;
+  z-index:900;
+  display:flex;flex-direction:column;
+  max-height:540px;
+  transform:scale(0.88) translateY(20px);transform-origin:bottom right;
+  opacity:0;pointer-events:none;
+  transition:all 0.28s cubic-bezier(0.34,1.56,0.64,1);
+  box-shadow:0 20px 60px rgba(0,0,0,0.8),0 0 40px rgba(79,195,247,0.05);
+}
+#copilot-panel.open{opacity:1;pointer-events:all;transform:scale(1) translateY(0);}
+.cp-header{
+  padding:16px 18px 13px;
+  border-bottom:1px solid rgba(255,255,255,0.07);
+  display:flex;align-items:center;gap:10px;
+  flex-shrink:0;
+}
+.cp-logo{
+  width:34px;height:34px;border-radius:10px;
+  background:linear-gradient(135deg,#4fc3f7,#7c6fff);
+  display:flex;align-items:center;justify-content:center;font-size:1.1rem;
+  box-shadow:0 0 20px rgba(79,195,247,0.3);
+}
+.cp-header-text .title{font-size:0.95rem;font-weight:600;color:var(--text);}
+.cp-header-text .sub{font-size:0.72rem;color:var(--text-muted);}
+.cp-messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;}
+.cp-msg{max-width:88%;border-radius:16px;padding:11px 14px;font-size:0.83rem;line-height:1.55;}
+.cp-msg.ai{
+  background:rgba(79,195,247,0.08);border:1px solid rgba(79,195,247,0.15);
+  color:var(--text);align-self:flex-start;border-bottom-left-radius:4px;
+}
+.cp-msg.user{
+  background:rgba(124,111,255,0.15);border:1px solid rgba(124,111,255,0.2);
+  color:var(--text);align-self:flex-end;border-bottom-right-radius:4px;
+}
+.cp-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 10px;}
+.cp-chip{
+  background:rgba(79,195,247,0.08);border:1px solid rgba(79,195,247,0.2);
+  border-radius:20px;padding:5px 12px;
+  font-size:0.73rem;color:#4fc3f7;cursor:pointer;transition:all 0.15s;
+}
+.cp-chip:hover{background:rgba(79,195,247,0.18);}
+.cp-input-row{
+  display:flex;align-items:center;gap:8px;
+  padding:12px 14px;border-top:1px solid rgba(255,255,255,0.06);flex-shrink:0;
+}
+.cp-input{
+  flex:1;background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.1);border-radius:12px;
+  padding:9px 13px;color:var(--text);font-size:0.83rem;
+  outline:none;transition:border-color 0.2s;
+}
+.cp-input:focus{border-color:rgba(79,195,247,0.4);}
+.cp-input::placeholder{color:var(--text-muted);}
+.cp-send{
+  width:36px;height:36px;border-radius:10px;
+  background:linear-gradient(135deg,#4fc3f7,#7c6fff);
+  border:none;cursor:pointer;color:#fff;font-size:1.1rem;
+  display:flex;align-items:center;justify-content:center;
+  transition:transform 0.15s,box-shadow 0.15s;
+  box-shadow:0 4px 14px rgba(79,195,247,0.3);
+}
+.cp-send:hover{transform:scale(1.08);box-shadow:0 6px 20px rgba(79,195,247,0.4);}
+
+/* NOTIFICATIONS */
+#notif-container{position:fixed;top:16px;right:16px;z-index:9000;display:flex;flex-direction:column;gap:8px;width:340px;}
+.notif{
+  background:rgba(8,14,38,0.94);
+  backdrop-filter:blur(30px);
+  border:1px solid rgba(255,255,255,0.10);
+  border-top:1px solid rgba(255,255,255,0.16);
+  border-radius:16px;padding:14px 16px;
+  box-shadow:0 8px 40px rgba(0,0,0,0.7),0 0 0 1px rgba(0,0,0,0.3);
+  animation:notif-in 0.32s cubic-bezier(0.34,1.56,0.64,1);
+  cursor:pointer;
+}
+@keyframes notif-in{from{transform:translateX(110%);opacity:0;}to{transform:translateX(0);opacity:1;}}
+.notif-app{font-size:0.7rem;color:var(--text-muted);margin-bottom:5px;display:flex;align-items:center;gap:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;}
+.notif-title{font-size:0.9rem;font-weight:600;color:var(--text);margin-bottom:3px;}
+.notif-body{font-size:0.79rem;color:var(--text-muted);line-height:1.45;}
+
+/* CONTEXT MENU */
+#ctx-menu{
+  position:fixed;z-index:9999;
+  background:rgba(8,14,40,0.95);
+  backdrop-filter:blur(40px);
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius:14px;padding:7px;
+  min-width:200px;
+  box-shadow:0 20px 50px rgba(0,0,0,0.8),0 0 0 1px rgba(255,255,255,0.04);
+  display:none;
+  animation:ctx-in 0.15s ease;
+}
+@keyframes ctx-in{from{opacity:0;transform:scale(0.94);}to{opacity:1;transform:scale(1);}}
+.ctx-item{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 12px;border-radius:9px;
+  font-size:0.84rem;color:var(--text);
+  cursor:pointer;transition:background 0.12s;
+}
+.ctx-item:hover{background:rgba(255,255,255,0.09);}
+.ctx-item .ico{font-size:1rem;width:20px;text-align:center;}
+.ctx-sep{height:1px;background:rgba(255,255,255,0.07);margin:5px 7px;}
+
+/* ══════════════════════════════════════════
+   SNAP GUIDES
+══════════════════════════════════════════ */
+#snap-guide{position:fixed;inset:0;pointer-events:none;z-index:500;}
+.snap-zone{
+  position:absolute;border:2px solid rgba(79,195,247,0.5);
+  border-radius:14px;background:rgba(79,195,247,0.07);
+  backdrop-filter:blur(4px);
+  transition:opacity 0.15s;opacity:0;
+}
+.snap-half-left{left:4px;top:4px;width:calc(50% - 6px);bottom:calc(var(--taskbar-h) + 20px);}
+.snap-half-right{right:4px;top:4px;width:calc(50% - 6px);bottom:calc(var(--taskbar-h) + 20px);}
+.snap-full{inset:4px;bottom:calc(var(--taskbar-h) + 20px);}
+
+/* ══════════════════════════════════════════
+   SCROLLBAR
+══════════════════════════════════════════ */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.22);}
+
+/* ══════════════════════════════════════════
+   APP: FILE EXPLORER
+══════════════════════════════════════════ */
+.fe-sidebar{width:188px;flex-shrink:0;border-right:1px solid var(--border);padding:10px;overflow-y:auto;}
+.fe-sidebar-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:9px;cursor:pointer;font-size:0.82rem;color:var(--text-muted);transition:all 0.12s;}
+.fe-sidebar-item:hover{background:rgba(255,255,255,0.07);color:var(--text);}
+.fe-sidebar-item.active{background:rgba(79,195,247,0.14);color:#4fc3f7;}
+.fe-toolbar{display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0;background:rgba(255,255,255,0.02);}
+.fe-btn{padding:5px 12px;border-radius:8px;font-size:0.78rem;color:var(--text-muted);cursor:pointer;transition:all 0.12s;display:flex;align-items:center;gap:5px;}
+.fe-btn:hover{background:rgba(255,255,255,0.09);color:var(--text);}
+.fe-path{flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:9px;padding:5px 12px;font-size:0.8rem;color:var(--text-muted);}
+.fe-content-area{display:flex;flex:1;overflow:hidden;}
+.fe-files{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:4px;padding:12px;align-content:start;overflow-y:auto;flex:1;}
+.fe-file{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 8px;border-radius:10px;cursor:pointer;transition:all 0.12s;}
+.fe-file:hover{background:rgba(255,255,255,0.08);transform:scale(1.04);}
+.fe-file .ico{font-size:1.9rem;line-height:1;}
+.fe-file span{font-size:0.68rem;color:var(--text);text-align:center;line-height:1.3;word-break:break-word;}
+
+/* APP: SETTINGS */
+.settings-layout{display:flex;height:100%;}
+.settings-nav{width:210px;flex-shrink:0;padding:12px;border-right:1px solid var(--border);overflow-y:auto;}
+.settings-nav-item{display:flex;align-items:center;gap:10px;padding:10px 13px;border-radius:10px;cursor:pointer;font-size:0.83rem;color:var(--text-muted);transition:all 0.12s;margin-bottom:2px;}
+.settings-nav-item:hover{background:rgba(255,255,255,0.07);color:var(--text);}
+.settings-nav-item.active{background:rgba(79,195,247,0.14);color:#4fc3f7;}
+.settings-nav-item .ico{font-size:1rem;width:20px;}
+.settings-content{flex:1;padding:28px;overflow-y:auto;}
+.settings-title{font-size:1.35rem;font-weight:600;color:var(--text);margin-bottom:6px;}
+.settings-subtitle{font-size:0.83rem;color:var(--text-muted);margin-bottom:22px;line-height:1.5;}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:12px;margin-bottom:7px;transition:background 0.15s;}
+.settings-row:hover{background:rgba(255,255,255,0.06);}
+.settings-row-info .label{font-size:0.88rem;color:var(--text);font-weight:500;}
+.settings-row-info .desc{font-size:0.75rem;color:var(--text-muted);margin-top:2px;}
+.toggle{width:48px;height:26px;border-radius:13px;background:rgba(255,255,255,0.14);border:1px solid rgba(255,255,255,0.18);cursor:pointer;position:relative;transition:all 0.25s;flex-shrink:0;}
+.toggle.on{background:var(--accent);border-color:var(--accent);box-shadow:0 0 10px rgba(79,195,247,0.3);}
+.toggle::after{content:'';position:absolute;width:20px;height:20px;border-radius:50%;background:#fff;top:2px;left:2px;transition:transform 0.25s;box-shadow:0 1px 4px rgba(0,0,0,0.4);}
+.toggle.on::after{transform:translateX(22px);}
+.settings-slider{width:130px;accent-color:var(--accent);}
+
+/* APP: NOTEPAD */
+.notepad-toolbar{display:flex;align-items:center;gap:4px;padding:8px 10px;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.02);flex-shrink:0;flex-wrap:wrap;}
+.np-btn{padding:5px 11px;border-radius:7px;font-size:0.76rem;color:var(--text-muted);cursor:pointer;transition:all 0.12s;display:flex;align-items:center;gap:4px;}
+.np-btn:hover{background:rgba(255,255,255,0.09);color:var(--text);}
+.np-textarea{flex:1;width:100%;background:transparent;border:none;outline:none;color:var(--text);font-size:0.93rem;line-height:1.75;padding:20px;resize:none;font-family:'Cascadia Code','Consolas',monospace;overflow:auto;}
+.np-statusbar{display:flex;align-items:center;justify-content:flex-end;gap:22px;padding:5px 14px;border-top:1px solid var(--border);font-size:0.72rem;color:var(--text-muted);background:rgba(255,255,255,0.02);flex-shrink:0;}
+
+/* APP: BROWSER */
+.browser-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.02);flex-shrink:0;}
+.browser-navbtn{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:0.95rem;color:var(--text-muted);transition:all 0.12s;}
+.browser-navbtn:hover{background:rgba(255,255,255,0.09);color:var(--text);}
+.browser-url{flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:22px;padding:7px 16px;color:var(--text);font-size:0.83rem;outline:none;transition:all 0.2s;}
+.browser-url:focus{border-color:rgba(79,195,247,0.4);background:rgba(79,195,247,0.04);}
+.browser-content{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;overflow:auto;}
+.browser-homepage{text-align:center;max-width:560px;}
+.browser-homepage h2{font-size:2.2rem;font-weight:200;color:var(--text);margin-bottom:6px;}
+.browser-search-bar{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:13px 18px;margin:24px 0;width:min(480px,90%);}
+.browser-search-bar input{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:0.97rem;}
+.browser-search-bar input::placeholder{color:var(--text-muted);}
+.browser-shortcuts{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;}
+.browser-shortcut{display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;padding:12px;border-radius:14px;transition:all 0.15s;}
+.browser-shortcut:hover{background:rgba(255,255,255,0.08);transform:translateY(-2px);}
+.browser-shortcut .ico{font-size:1.7rem;}
+.browser-shortcut span{font-size:0.71rem;color:var(--text-muted);}
+
+/* APP: CALCULATOR */
+.calc-display{padding:22px 20px 14px;text-align:right;border-bottom:1px solid var(--border);}
+.calc-expr{font-size:0.83rem;color:var(--text-muted);min-height:20px;}
+.calc-num{font-size:2.6rem;font-weight:200;color:var(--text);word-break:break-all;transition:transform 0.1s;}
+.calc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:14px;}
+.calc-btn{padding:14px 6px;border-radius:12px;font-size:1rem;cursor:pointer;text-align:center;transition:all 0.1s;color:var(--text);background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.06);}
+.calc-btn:hover{background:rgba(255,255,255,0.11);transform:scale(1.04);}
+.calc-btn:active{transform:scale(0.94);}
+.calc-btn.op{background:rgba(79,195,247,0.1);color:#4fc3f7;border-color:rgba(79,195,247,0.2);}
+.calc-btn.op:hover{background:rgba(79,195,247,0.18);}
+.calc-btn.eq{background:linear-gradient(135deg,#4fc3f7,#7c6fff);color:#fff;border:none;box-shadow:0 4px 16px rgba(79,195,247,0.3);}
+.calc-btn.eq:hover{opacity:0.9;box-shadow:0 6px 20px rgba(79,195,247,0.4);}
+.calc-btn.special{background:rgba(255,255,255,0.03);color:var(--text-muted);}
+
+/* APP: PHOTOS */
+.photos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:4px;padding:12px;overflow-y:auto;}
+.photo-thumb{aspect-ratio:1;border-radius:10px;overflow:hidden;cursor:pointer;position:relative;transition:all 0.2s;}
+.photo-thumb:hover{transform:scale(1.04);z-index:1;box-shadow:0 8px 24px rgba(0,0,0,0.6);}
+.photo-thumb canvas{width:100%;height:100%;display:block;}
+
+/* APP: MUSIC */
+.music-player{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 24px;gap:16px;}
+.music-art{width:168px;height:168px;border-radius:20px;background:linear-gradient(135deg,#1a0a45,#0a2060);display:flex;align-items:center;justify-content:center;box-shadow:0 16px 50px rgba(0,0,0,0.6),0 0 40px rgba(79,195,247,0.1);position:relative;overflow:hidden;}
+.music-art::before{content:'';position:absolute;inset:0;background:conic-gradient(from 0deg,rgba(79,195,247,0.2),rgba(124,111,255,0.2),rgba(79,195,247,0.2));animation:art-rotate 4s linear infinite paused;}
+.music-art.playing::before{animation-play-state:running;}
+@keyframes art-rotate{to{transform:rotate(360deg);}}
+.music-art-inner{font-size:3.8rem;z-index:1;animation:spin-disc 8s linear infinite paused;}
+.music-art-inner.playing{animation-play-state:running;}
+@keyframes spin-disc{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.music-track{text-align:center;}
+.music-track .song{font-size:1.1rem;font-weight:600;color:var(--text);}
+.music-track .artist{font-size:0.83rem;color:var(--text-muted);margin-top:3px;}
+.music-progress{width:100%;height:5px;background:rgba(255,255,255,0.1);border-radius:3px;position:relative;cursor:pointer;border-radius:3px;}
+.music-progress-fill{height:100%;background:linear-gradient(90deg,#4fc3f7,#7c6fff);border-radius:3px;transition:width 0.5s linear;position:relative;}
+.music-progress-fill::after{content:'';position:absolute;right:-5px;top:-4px;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 0 8px rgba(79,195,247,0.6);}
+.music-time{display:flex;justify-content:space-between;width:100%;font-size:0.72rem;color:var(--text-muted);}
+.music-controls{display:flex;align-items:center;gap:18px;}
+.mc-btn{font-size:1.45rem;cursor:pointer;color:var(--text-muted);transition:all 0.15s;}
+.mc-btn:hover{color:var(--text);transform:scale(1.1);}
+.mc-btn.play{font-size:2.4rem;color:#4fc3f7;filter:drop-shadow(0 0 10px rgba(79,195,247,0.4));}
+
+/* APP: TERMINAL */
+.terminal-body{background:#050a1a;height:100%;padding:16px;font-family:'Cascadia Code','Consolas',monospace;font-size:0.85rem;color:#00ff88;overflow-y:auto;display:flex;flex-direction:column;}
+.terminal-line{line-height:1.6;white-space:pre-wrap;word-break:break-all;}
+.terminal-input-row{display:flex;align-items:center;gap:8px;margin-top:4px;}
+.terminal-prompt{color:#4fc3f7;flex-shrink:0;}
+.terminal-input{flex:1;background:none;border:none;outline:none;color:#00ff88;font-family:inherit;font-size:inherit;caret-color:#00ff88;}
+
+/* APP: TASK MANAGER */
+.tm-tabs{display:flex;gap:4px;padding:10px 14px 0;border-bottom:1px solid var(--border);}
+.tm-tab{padding:8px 16px;border-radius:9px 9px 0 0;font-size:0.8rem;color:var(--text-muted);cursor:pointer;transition:all 0.15s;}
+.tm-tab.active{background:rgba(79,195,247,0.12);color:#4fc3f7;border-bottom:2px solid #4fc3f7;}
+.tm-body{padding:14px;overflow:auto;}
+.tm-proc-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;transition:background 0.12s;cursor:pointer;}
+.tm-proc-row:hover{background:rgba(255,255,255,0.05);}
+.tm-proc-name{flex:2;font-size:0.83rem;color:var(--text);}
+.tm-proc-val{flex:1;font-size:0.8rem;color:var(--text-muted);text-align:right;}
+.tm-bar{height:6px;border-radius:3px;background:rgba(255,255,255,0.08);}
+.tm-bar-fill{height:100%;border-radius:3px;transition:width 1s;}
+.tm-header-row{display:flex;gap:10px;padding:6px 10px;font-size:0.72rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.08em;border-bottom:1px solid rgba(255,255,255,0.05);margin-bottom:4px;}
+
+/* APP: PAINT */
+.paint-toolbar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.02);flex-shrink:0;flex-wrap:wrap;}
+.paint-tool-btn{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;transition:all 0.12s;color:var(--text-muted);}
+.paint-tool-btn:hover{background:rgba(255,255,255,0.1);color:var(--text);}
+.paint-tool-btn.active{background:rgba(79,195,247,0.2);color:#4fc3f7;}
+.color-swatch{width:26px;height:26px;border-radius:6px;cursor:pointer;border:2px solid transparent;transition:all 0.12s;}
+.color-swatch:hover,.color-swatch.active{border-color:#fff;transform:scale(1.15);}
+.paint-canvas{cursor:crosshair;display:block;}
+
+/* APP: CALENDAR */
+.cal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border);}
+.cal-month{font-size:1.1rem;font-weight:600;color:var(--text);}
+.cal-nav-btn{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-muted);transition:all 0.12s;}
+.cal-nav-btn:hover{background:rgba(255,255,255,0.09);color:var(--text);}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:12px;}
+.cal-day-name{text-align:center;font-size:0.72rem;color:var(--text-muted);font-weight:600;padding:6px 0;text-transform:uppercase;letter-spacing:0.06em;}
+.cal-day{text-align:center;padding:8px 4px;border-radius:10px;font-size:0.85rem;color:var(--text-muted);cursor:pointer;transition:all 0.12s;aspect-ratio:1;display:flex;align-items:center;justify-content:center;}
+.cal-day:hover{background:rgba(255,255,255,0.08);color:var(--text);}
+.cal-day.today{background:linear-gradient(135deg,#4fc3f7,#7c6fff);color:#fff;font-weight:700;box-shadow:0 4px 14px rgba(79,195,247,0.3);}
+.cal-day.other-month{opacity:0.25;}
+.cal-day.has-event::after{content:'';display:block;width:4px;height:4px;border-radius:50%;background:#4fc3f7;margin:2px auto 0;}
+
+/* APP: MAPS */
+.maps-body{height:100%;display:flex;flex-direction:column;}
+.maps-search-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.02);}
+.maps-search-input{flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:8px 12px;color:var(--text);font-size:0.85rem;outline:none;}
+.maps-canvas-wrap{flex:1;position:relative;overflow:hidden;background:#0a1428;}
+.maps-pin{position:absolute;transform:translate(-50%,-100%);font-size:1.8rem;cursor:pointer;animation:pin-drop 0.4s cubic-bezier(0.34,1.56,0.64,1);filter:drop-shadow(0 4px 8px rgba(0,0,0,0.6));}
+@keyframes pin-drop{from{opacity:0;transform:translate(-50%,-60%) scale(0.5);}to{opacity:1;transform:translate(-50%,-100%) scale(1);}}
+.maps-info-card{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(8,14,38,0.94);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:14px 18px;min-width:240px;box-shadow:0 8px 30px rgba(0,0,0,0.6);}
+
+/* APP: TEAMS */
+.teams-layout{display:flex;height:100%;}
+.teams-sidebar{width:220px;border-right:1px solid var(--border);display:flex;flex-direction:column;background:rgba(4,8,22,0.5);}
+.teams-chat-area{flex:1;display:flex;flex-direction:column;}
+.teams-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;}
+.teams-msg{display:flex;gap:10px;}
+.teams-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:700;flex-shrink:0;}
+.teams-msg-content .sender{font-size:0.8rem;font-weight:600;color:var(--text);margin-bottom:3px;}
+.teams-msg-content .body{font-size:0.83rem;color:var(--text-muted);line-height:1.5;background:rgba(255,255,255,0.04);border-radius:0 12px 12px 12px;padding:8px 12px;}
+.teams-msg-content.me .body{background:rgba(79,195,247,0.1);border-radius:12px 0 12px 12px;}
+.teams-input-row{display:flex;align-items:center;gap:8px;padding:12px 14px;border-top:1px solid var(--border);}
+.teams-input{flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 13px;color:var(--text);font-size:0.83rem;outline:none;}
+
+</style>
+</head>
+<body>
+
+<!-- LOCKSCREEN -->
+<div id="lockscreen">
+  <canvas id="ls-canvas"></canvas>
+  <div class="ls-orbs">
+    <div class="ls-orb" style="width:500px;height:500px;background:rgba(79,195,247,0.12);top:-100px;left:-100px;animation-delay:0s;animation-duration:10s;"></div>
+    <div class="ls-orb" style="width:400px;height:400px;background:rgba(124,111,255,0.12);bottom:-80px;right:-80px;animation-delay:-4s;animation-duration:12s;"></div>
+    <div class="ls-orb" style="width:300px;height:300px;background:rgba(0,229,255,0.08);top:40%;left:40%;animation-delay:-7s;animation-duration:9s;"></div>
+  </div>
+  <div class="ls-content">
+    <div class="ls-time" id="ls-time">00:00</div>
+    <div class="ls-date" id="ls-date">Tuesday, June 16, 2026</div>
+    <div class="ls-hint">↑ Click anywhere to unlock</div>
+  </div>
+</div>
+
+<!-- SNAP GUIDES -->
+<div id="snap-guide">
+  <div class="snap-zone snap-half-left" id="snap-left"></div>
+  <div class="snap-zone snap-half-right" id="snap-right"></div>
+  <div class="snap-zone snap-full" id="snap-full-el"></div>
+</div>
+
+<!-- DESKTOP -->
+<div id="desktop">
+  <canvas id="wallpaper-canvas"></canvas>
+  <canvas id="particle-canvas"></canvas>
+  <div class="desktop-overlay"></div>
+
+  <!-- DESKTOP ICONS -->
+  <div class="desk-icons">
+    <div class="desk-icon" ondblclick="openApp('browser')" onclick="selectIcon(this)"><div class="ico">🌐</div><span>Edge Browser</span></div>
+    <div class="desk-icon" ondblclick="openApp('explorer')" onclick="selectIcon(this)"><div class="ico">📁</div><span>File Explorer</span></div>
+    <div class="desk-icon" ondblclick="openApp('settings')" onclick="selectIcon(this)"><div class="ico">⚙️</div><span>Settings</span></div>
+    <div class="desk-icon" ondblclick="openApp('notepad')" onclick="selectIcon(this)"><div class="ico">📝</div><span>Notepad</span></div>
+    <div class="desk-icon" ondblclick="openApp('calc')" onclick="selectIcon(this)"><div class="ico">🔢</div><span>Calculator</span></div>
+    <div class="desk-icon" ondblclick="openApp('music')" onclick="selectIcon(this)"><div class="ico">🎵</div><span>Music</span></div>
+    <div class="desk-icon" ondblclick="openApp('photos')" onclick="selectIcon(this)"><div class="ico">🖼️</div><span>Photos</span></div>
+    <div class="desk-icon" ondblclick="openApp('terminal')" onclick="selectIcon(this)"><div class="ico">💻</div><span>Terminal</span></div>
+    <div class="desk-icon" ondblclick="openApp('taskman')" onclick="selectIcon(this)"><div class="ico">📊</div><span>Task Manager</span></div>
+    <div class="desk-icon" ondblclick="openApp('paint')" onclick="selectIcon(this)"><div class="ico">🎨</div><span>Paint</span></div>
+    <div class="desk-icon" ondblclick="openApp('calendar')" onclick="selectIcon(this)"><div class="ico">📅</div><span>Calendar</span></div>
+    <div class="desk-icon" ondblclick="openApp('maps')" onclick="selectIcon(this)"><div class="ico">🗺️</div><span>Maps</span></div>
+    <div class="desk-icon" ondblclick="openApp('teams')" onclick="selectIcon(this)"><div class="ico">💬</div><span>Teams</span></div>
+    <div class="desk-icon" ondblclick="openApp('copilot')" onclick="selectIcon(this)"><div class="ico">🤖</div><span>Copilot+</span></div>
+  </div>
+</div>
+
+<!-- WIDGET PANEL -->
+<div id="widget-panel">
+  <div class="wp-clock">
+    <div class="wp-time" id="wp-time">00:00</div>
+    <div class="wp-date" id="wp-date">Tuesday, June 16, 2026</div>
+  </div>
+  <div class="widget-card">
+    <div class="wc-title">🌤 Weather</div>
+    <div class="wc-weather">
+      <div style="font-size:2.8rem">⛅</div>
+      <div>
+        <div class="wc-temp">28°C</div>
+        <div class="wc-weather-info">
+          <div class="city">Guwahati, Assam</div>
+          Partly Cloudy · Humidity 78%<br>
+          <span style="font-size:0.72rem">Feels like 31°C · Wind 12 km/h</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="widget-card">
+    <div class="wc-title">⚡ Quick Settings</div>
+    <div class="quick-toggle">
+      <div class="qt-item on" onclick="this.classList.toggle('on')">📶 Wi-Fi</div>
+      <div class="qt-item on" onclick="this.classList.toggle('on')">🔵 Bluetooth</div>
+      <div class="qt-item" onclick="this.classList.toggle('on')">✈️ Airplane</div>
+      <div class="qt-item on" onclick="this.classList.toggle('on')">🌙 Night Mode</div>
+      <div class="qt-item" onclick="this.classList.toggle('on')">🔇 Mute</div>
+      <div class="qt-item on" onclick="this.classList.toggle('on')">🤖 Copilot+</div>
+      <div class="qt-item on" onclick="this.classList.toggle('on')">🔥 Hotspot</div>
+      <div class="qt-item" onclick="this.classList.toggle('on')">♿ Accessibility</div>
+    </div>
+  </div>
+  <div class="widget-card">
+    <div class="wc-title">📰 News</div>
+    <div class="news-item" onclick="showNotif('The Verge','Microsoft reveals Windows 12 AI features at Build 2026','🌐')"><div class="headline">Microsoft reveals Windows 12 AI features at Build 2026</div><div class="source">The Verge · 2h ago</div></div>
+    <div class="news-item" onclick="showNotif('Tom\'s Hardware','Snapdragon X2 Elite launches with 60 TOPS NPU performance','💻')"><div class="headline">Snapdragon X2 Elite launches with 60 TOPS NPU</div><div class="source">Tom's Hardware · 4h ago</div></div>
+    <div class="news-item" onclick="showNotif('Windows Central','CorePC architecture confirmed in leaked Windows build','🔧')"><div class="headline">CorePC modular architecture confirmed in latest build</div><div class="source">Windows Central · 6h ago</div></div>
+    <div class="news-item" onclick="showNotif('The Verge','AI PCs to outsell traditional laptops by 2027','🤖')"><div class="headline">AI PCs to outsell traditional laptops by 2027</div><div class="source">Bloomberg · 8h ago</div></div>
+  </div>
+  <div class="widget-card">
+    <div class="wc-title">🔋 Battery & Performance</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <span style="font-size:0.85rem;color:var(--text)">⚡ 87% · Plugged in</span>
+      <span style="font-size:0.75rem;color:#4fc3f7">~4h 20m</span>
+    </div>
+    <div style="height:7px;background:rgba(255,255,255,0.08);border-radius:4px;margin-bottom:12px;">
+      <div style="width:87%;height:100%;background:linear-gradient(90deg,#4fc3f7,#00cc88);border-radius:4px;box-shadow:0 0 8px rgba(79,195,247,0.3);"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.75rem;color:var(--text-muted);">
+      <div>CPU: <span id="cpu-usage" style="color:#4fc3f7">12%</span></div>
+      <div>GPU: <span style="color:#7c6fff">8%</span></div>
+      <div>RAM: <span style="color:#00cc88">4.2 / 16 GB</span></div>
+      <div>NPU: <span style="color:#4fc3f7">Active</span></div>
+    </div>
+  </div>
+  <div class="widget-card" id="widget-stocks">
+    <div class="wc-title">📈 Markets</div>
+    <div style="font-size:0.8rem;display:flex;flex-direction:column;gap:6px;color:var(--text);">
+      <div style="display:flex;justify-content:space-between"><span>MSFT</span><span style="color:#00cc88">▲ +2.4% $412</span></div>
+      <div style="display:flex;justify-content:space-between"><span>AAPL</span><span style="color:#00cc88">▲ +1.1% $218</span></div>
+      <div style="display:flex;justify-content:space-between"><span>GOOGL</span><span style="color:#f04">▼ -0.6% $178</span></div>
+      <div style="display:flex;justify-content:space-between"><span>NVDA</span><span style="color:#00cc88">▲ +3.8% $905</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- START MENU -->
+<div id="start-menu">
+  <div class="sm-search">
+    <span style="font-size:1.05rem;color:var(--text-muted)">🔍</span>
+    <input type="text" placeholder="Search apps, files, settings, web…" oninput="filterApps(this.value)" id="sm-search-input">
+  </div>
+  <div class="sm-label">Pinned Apps</div>
+  <div class="sm-apps" id="sm-apps-grid">
+    <div class="sm-app" onclick="openApp('browser');closeStart()"><div class="ico">🌐</div><span>Edge</span></div>
+    <div class="sm-app" onclick="openApp('explorer');closeStart()"><div class="ico">📁</div><span>Files</span></div>
+    <div class="sm-app" onclick="openApp('settings');closeStart()"><div class="ico">⚙️</div><span>Settings</span></div>
+    <div class="sm-app" onclick="openApp('notepad');closeStart()"><div class="ico">📝</div><span>Notepad</span></div>
+    <div class="sm-app" onclick="openApp('calc');closeStart()"><div class="ico">🔢</div><span>Calculator</span></div>
+    <div class="sm-app" onclick="openApp('music');closeStart()"><div class="ico">🎵</div><span>Music</span></div>
+    <div class="sm-app" onclick="openApp('photos');closeStart()"><div class="ico">🖼️</div><span>Photos</span></div>
+    <div class="sm-app" onclick="openApp('terminal');closeStart()"><div class="ico">💻</div><span>Terminal</span></div>
+    <div class="sm-app" onclick="openApp('taskman');closeStart()"><div class="ico">📊</div><span>Task Mgr</span></div>
+    <div class="sm-app" onclick="openApp('paint');closeStart()"><div class="ico">🎨</div><span>Paint</span></div>
+    <div class="sm-app" onclick="openApp('calendar');closeStart()"><div class="ico">📅</div><span>Calendar</span></div>
+    <div class="sm-app" onclick="openApp('maps');closeStart()"><div class="ico">🗺️</div><span>Maps</span></div>
+    <div class="sm-app" onclick="openApp('teams');closeStart()"><div class="ico">💬</div><span>Teams</span></div>
+    <div class="sm-app" onclick="openApp('copilot');closeStart()"><div class="ico">🤖</div><span>Copilot+</span></div>
+    <div class="sm-app" onclick="showNotif('Store','Microsoft Store — 250,000+ apps available!','🛒');closeStart()"><div class="ico">🛒</div><span>Store</span></div>
+    <div class="sm-app" onclick="showNotif('Xbox','Xbox Game Pass Ultimate — 200+ games ready to play!','🎮');closeStart()"><div class="ico">🎮</div><span>Xbox</span></div>
+    <div class="sm-app" onclick="showNotif('OneDrive','OneDrive — 5 TB synced and ready','☁️');closeStart()"><div class="ico">☁️</div><span>OneDrive</span></div>
+    <div class="sm-app" onclick="showNotif('Outlook','Outlook — 3 unread emails','📧');closeStart()"><div class="ico">📧</div><span>Outlook</span></div>
+  </div>
+  <div>
+    <div class="sm-label">Recommended</div>
+    <div class="sm-rec-grid">
+      <div class="sm-rec-item" onclick="openApp('notepad');closeStart()"><div class="ico">📝</div><div class="sm-rec-info"><div class="name">notes.txt</div><div class="sub">Notepad · Just now</div></div></div>
+      <div class="sm-rec-item" onclick="openApp('browser');closeStart()"><div class="ico">🌐</div><div class="sm-rec-info"><div class="name">Edge Browser</div><div class="sub">Recently opened</div></div></div>
+      <div class="sm-rec-item" onclick="openApp('explorer');closeStart()"><div class="ico">📊</div><div class="sm-rec-info"><div class="name">Report_Q2.xlsx</div><div class="sub">Excel · Yesterday</div></div></div>
+      <div class="sm-rec-item" onclick="openApp('music');closeStart()"><div class="ico">🎵</div><div class="sm-rec-info"><div class="name">My Playlist</div><div class="sub">Music · 2h ago</div></div></div>
+    </div>
+  </div>
+  <div class="sm-footer">
+    <div class="sm-user">
+      <div class="sm-avatar">W</div>
+      <div>
+        <div class="sm-username">Windows User</div>
+        <div style="font-size:0.7rem;color:var(--text-muted)">Windows 12 AI PC</div>
+      </div>
+    </div>
+    <div class="sm-power-btns">
+      <div class="sm-power-btn" title="Sleep" onclick="showNotif('System','Putting PC to sleep…','😴')">😴</div>
+      <div class="sm-power-btn" title="Restart" onclick="showNotif('System','Restarting Windows 12…','🔄')">🔄</div>
+      <div class="sm-power-btn" title="Shut Down" onclick="lockScreen()">⏻</div>
+    </div>
+  </div>
+</div>
+
+<!-- COPILOT PANEL -->
+<div id="copilot-panel">
+  <div class="cp-header">
+    <div class="cp-logo">🤖</div>
+    <div class="cp-header-text">
+      <div class="title">Copilot+</div>
+      <div class="sub">Windows 12 · On-Device AI · NPU Active</div>
+    </div>
+    <div style="margin-left:auto;cursor:pointer;color:var(--text-muted);font-size:1.1rem;padding:4px 8px;border-radius:7px;transition:background 0.15s;" onmouseenter="this.style.background='rgba(255,255,255,0.08)'" onmouseleave="this.style.background=''" onclick="toggleCopilot()">✕</div>
+  </div>
+  <div class="cp-messages" id="cp-msgs">
+    <div class="cp-msg ai">Hi! I'm Copilot+, your Windows 12 AI assistant running entirely on your NPU. 🚀<br><br>I can open apps, answer questions, check the weather, and much more. What can I do for you?</div>
+  </div>
+  <div class="cp-chips" id="cp-chips">
+    <div class="cp-chip" onclick="askCopilot('Open File Explorer')">📁 Open Files</div>
+    <div class="cp-chip" onclick="askCopilot('What time is it?')">🕐 Time</div>
+    <div class="cp-chip" onclick="askCopilot('Tell me about Windows 12')">💡 Windows 12</div>
+    <div class="cp-chip" onclick="askCopilot('Show me the weather')">⛅ Weather</div>
+    <div class="cp-chip" onclick="askCopilot('Open calculator')">🔢 Calculator</div>
+    <div class="cp-chip" onclick="askCopilot('Open terminal')">💻 Terminal</div>
+  </div>
+  <div class="cp-input-row">
+    <input class="cp-input" id="cp-input" placeholder="Ask Copilot+ anything…" onkeydown="if(event.key==='Enter')sendCopilot()">
+    <button class="cp-send" onclick="sendCopilot()">↑</button>
+  </div>
+</div>
+
+<!-- TASKBAR -->
+<div id="taskbar">
+  <div class="tb-btn" id="widget-btn" title="Widgets (Win+W)" onclick="toggleWidgets()">⊞</div>
+  <div class="tb-btn" id="start-btn" title="Start (Win)" onclick="toggleStart()">
+    <div class="win-logo">
+      <div style="background:#4fc3f7;border-radius:3px;"></div>
+      <div style="background:#00e5ff;border-radius:3px;"></div>
+      <div style="background:#7c6fff;border-radius:3px;"></div>
+      <div style="background:#00ff88;border-radius:3px;"></div>
+    </div>
+  </div>
+  <div class="tb-search" onclick="openApp('browser')">
+    <span style="font-size:0.95rem">🔍</span>
+    <span>Search Windows…</span>
+  </div>
+  <div class="tb-sep"></div>
+  <div id="tb-running" class="tb-running"></div>
+  <div class="tb-sep"></div>
+  <div class="tb-btn" title="Copilot+ (Win+C)" onclick="toggleCopilot()" id="copilot-tb-btn">🤖</div>
+  <div class="tb-btn" title="Notifications" id="notif-btn" onclick="showNotif('Notification Center','Copilot+ Summary: Nothing urgent. All systems running smoothly!','🔔')">
+    🔔<div class="tb-badge"></div>
+  </div>
+  <div class="tb-clock-area" onclick="toggleWidgets()">
+    <div class="time" id="tb-time">00:00</div>
+    <div id="tb-date" style="font-size:0.68rem;color:var(--text-muted);">Tue 06/16</div>
+  </div>
+  <div class="tb-btn" title="Show Desktop" onclick="minimizeAll()" style="font-size:0.6rem;width:12px;padding:0;min-width:12px;border-radius:3px;border-left:1px solid rgba(255,255,255,0.15);">⠀</div>
+</div>
+
+<!-- CONTEXT MENU -->
+<div id="ctx-menu">
+  <div class="ctx-item" onclick="showNotif('Personalize','Opening personalization settings…','🎨');closeCtx()"><span class="ico">🎨</span>Personalize</div>
+  <div class="ctx-item" onclick="showNotif('Display','Opening display settings…','🖥️');closeCtx()"><span class="ico">🖥️</span>Display Settings</div>
+  <div class="ctx-item" onclick="openApp('settings');closeCtx()"><span class="ico">⚙️</span>Settings</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="openApp('terminal');closeCtx()"><span class="ico">💻</span>Open Terminal Here</div>
+  <div class="ctx-item" onclick="showNotif('New Folder','Desktop folder created','📁');closeCtx()"><span class="ico">📁</span>New Folder</div>
+  <div class="ctx-item" onclick="openApp('notepad');closeCtx()"><span class="ico">📝</span>New Text File</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="showNotif('Copilot+','AI is analyzing your desktop…','🤖');closeCtx()"><span class="ico">🤖</span>Ask Copilot+</div>
+  <div class="ctx-item" onclick="showNotif('Refresh','Desktop refreshed','🔄');closeCtx()"><span class="ico">🔄</span>Refresh</div>
+</div>
+
+<!-- NOTIFICATION CONTAINER -->
+<div id="notif-container"></div>
+
+<script>
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+const windows = {};
+let winZ = 200;
+let dragState = null;
+let startOpen = false, copilotOpen = false, widgetsOpen = false;
+let musicPlaying = false, musicProgress = 0, musicTimer = null;
+let currentTrack = 0;
+const TASKBAR_H = 56 + 10 + 10;
+
+// ══════════════════════════════════════════
+// WALLPAPER — Stunning Windows 12 Aurora
+// ══════════════════════════════════════════
+(function(){
+  const c = document.getElementById('wallpaper-canvas');
+  const ctx = c.getContext('2d');
+  let w, h, t = 0;
+
+  function resize() { c.width = w = window.innerWidth; c.height = h = window.innerHeight; }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // Mountain silhouette
+  function drawMountains(ctx, w, h) {
+    const peaks = [
+      {x:0.05,y:0.55,h:0.28},{x:0.18,y:0.45,h:0.38},{x:0.32,y:0.52,h:0.30},
+      {x:0.45,y:0.40,h:0.42},{x:0.58,y:0.48,h:0.34},{x:0.70,y:0.44,h:0.38},
+      {x:0.82,y:0.50,h:0.32},{x:0.92,y:0.46,h:0.36},{x:1.0,y:0.52,h:0.30},
+    ];
+    ctx.beginPath();
+    ctx.moveTo(0, h);
+    peaks.forEach((p, i) => {
+      const x = p.x * w;
+      const y = h * p.y;
+      if (i === 0) ctx.lineTo(x, y);
+      else {
+        const prev = peaks[i - 1];
+        const cx = (prev.x + p.x) / 2 * w;
+        ctx.quadraticCurveTo(prev.x * w, prev.y * h, cx, (prev.y + p.y) / 2 * h);
+        ctx.quadraticCurveTo(cx, (prev.y + p.y) / 2 * h, x, y);
+      }
+    });
+    ctx.lineTo(w, h);
+    ctx.closePath();
+  }
+
+  const orbs = [
+    {x:.2,y:.3,r:.4,vx:.0002,vy:.0001,hue:200,sat:80,bri:60,a:.18},
+    {x:.7,y:.2,r:.35,vx:-.0003,vy:.0002,hue:260,sat:70,bri:65,a:.14},
+    {x:.5,y:.6,r:.45,vx:.0001,vy:-.0002,hue:190,sat:90,bri:55,a:.10},
+    {x:.1,y:.7,r:.3,vx:.0004,vy:-.0001,hue:280,sat:60,bri:60,a:.12},
+    {x:.9,y:.5,r:.38,vx:-.0002,vy:.0003,hue:220,sat:75,bri:58,a:.15},
+    {x:.4,y:.1,r:.32,vx:.0003,vy:.0002,hue:240,sat:85,bri:62,a:.13},
+  ];
+
+  // Stars
+  const stars = Array.from({length:180}, () => ({
+    x: Math.random(), y: Math.random() * 0.7,
+    r: Math.random() * 1.4 + 0.3,
+    twinkle: Math.random() * Math.PI * 2,
+    speed: Math.random() * 0.03 + 0.01,
+  }));
+
+  function draw() {
+    ctx.clearRect(0, 0, w, h);
+    t += 0.003;
+
+    // Deep space gradient
+    const sky = ctx.createLinearGradient(0, 0, 0, h);
+    sky.addColorStop(0, '#010510');
+    sky.addColorStop(0.3, '#040a1f');
+    sky.addColorStop(0.6, '#060d28');
+    sky.addColorStop(1, '#080e20');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, w, h);
+
+    // Aurora orbs
+    orbs.forEach(o => {
+      o.x += o.vx; o.y += o.vy;
+      if (o.x < 0 || o.x > 1) o.vx *= -1;
+      if (o.y < 0 || o.y > 1) o.vy *= -1;
+      const g = ctx.createRadialGradient(o.x*w, o.y*h, 0, o.x*w, o.y*h, o.r*Math.min(w,h));
+      const pulse = Math.sin(t * 0.8 + o.hue) * 0.03;
+      g.addColorStop(0, `hsla(${o.hue + Math.sin(t)*10},${o.sat}%,${o.bri}%,${o.a + pulse})`);
+      g.addColorStop(0.5, `hsla(${o.hue + 20},${o.sat-10}%,${o.bri-10}%,${(o.a*0.4)})`);
+      g.addColorStop(1, 'transparent');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+    });
+
+    // Aurora ribbon effect
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(0, h * 0.3);
+      for (let x = 0; x <= w; x += 20) {
+        const y = h * (0.28 + 0.08 * Math.sin(x * 0.005 + t + i * 1.5) + 0.04 * Math.sin(x * 0.01 + t * 1.3));
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(w, h);
+      ctx.lineTo(0, h);
+      ctx.closePath();
+      const hue = [200, 240, 280][i];
+      const ag = ctx.createLinearGradient(0, 0, 0, h * 0.5);
+      ag.addColorStop(0, `hsla(${hue},80%,60%,0.0)`);
+      ag.addColorStop(0.4, `hsla(${hue},90%,65%,${0.06 - i * 0.015})`);
+      ag.addColorStop(1, 'transparent');
+      ctx.fillStyle = ag;
+      ctx.fill();
+    }
+
+    // Stars
+    stars.forEach(s => {
+      const alpha = 0.3 + 0.7 * Math.abs(Math.sin(s.twinkle + t * s.speed));
+      ctx.beginPath();
+      ctx.arc(s.x * w, s.y * h * 0.75, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+      ctx.fill();
+    });
+
+    // Shooting star
+    const shootT = t * 0.2 % 1;
+    if (shootT < 0.4) {
+      const sx = (shootT / 0.4) * w * 1.3 - w * 0.1;
+      const sy = h * 0.1 + shootT * h * 0.15;
+      const trail = ctx.createLinearGradient(sx - 120, sy - 60, sx, sy);
+      trail.addColorStop(0, 'transparent');
+      trail.addColorStop(1, 'rgba(255,255,255,0.6)');
+      ctx.strokeStyle = trail;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(sx - 120, sy - 60);
+      ctx.lineTo(sx, sy);
+      ctx.stroke();
+    }
+
+    // Mountain layers (far)
+    ctx.save();
+    ctx.translate(0, 0);
+    drawMountains(ctx, w, h);
+    const mGrad1 = ctx.createLinearGradient(0, h * 0.4, 0, h);
+    mGrad1.addColorStop(0, 'rgba(10,18,50,0.7)');
+    mGrad1.addColorStop(0.4, 'rgba(6,12,35,0.85)');
+    mGrad1.addColorStop(1, 'rgba(4,8,22,0.95)');
+    ctx.fillStyle = mGrad1;
+    ctx.fill();
+
+    // Snow caps
+    const peaksSnow = [{x:.18,y:.45},{x:.45,y:.40},{x:.70,y:.44},{x:.92,y:.46}];
+    peaksSnow.forEach(p => {
+      const x = p.x * w, y = p.y * h;
+      const sg = ctx.createRadialGradient(x, y, 0, x, y, w * 0.04);
+      sg.addColorStop(0, 'rgba(255,255,255,0.3)');
+      sg.addColorStop(1, 'transparent');
+      ctx.fillStyle = sg;
+      ctx.fillRect(0, 0, w, h);
+    });
+    ctx.restore();
+
+    // Closer mountain layer
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(0, h);
+    const close = [{x:0,y:.72},{x:.12,y:.62},{x:.25,y:.68},{x:.38,y:.60},{x:.52,y:.65},{x:.65,y:.59},{x:.78,y:.64},{x:.88,y:.61},{x:1,y:.66}];
+    close.forEach((p, i) => {
+      if (i === 0) ctx.lineTo(p.x * w, p.y * h);
+      else {
+        const prev = close[i - 1];
+        ctx.quadraticCurveTo(prev.x * w, prev.y * h, (prev.x + p.x) / 2 * w, (prev.y + p.y) / 2 * h);
+      }
+    });
+    ctx.lineTo(w, h);
+    ctx.closePath();
+    const mGrad2 = ctx.createLinearGradient(0, h * 0.55, 0, h);
+    mGrad2.addColorStop(0, 'rgba(4,8,22,0.92)');
+    mGrad2.addColorStop(1, 'rgba(2,5,15,1)');
+    ctx.fillStyle = mGrad2;
+    ctx.fill();
+    ctx.restore();
+
+    // Ground/horizon glow
+    const hGrad = ctx.createLinearGradient(0, h * 0.7, 0, h);
+    hGrad.addColorStop(0, 'transparent');
+    hGrad.addColorStop(0.3, `rgba(79,195,247,${0.04 + 0.02 * Math.sin(t * 0.5)})`);
+    hGrad.addColorStop(1, 'rgba(2,5,15,1)');
+    ctx.fillStyle = hGrad;
+    ctx.fillRect(0, h * 0.7, w, h * 0.3);
+
+    // Windows logo watermark glow
+    const cx = w / 2, cy = h * 0.52;
+    const logoG = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.min(w, h) * 0.12);
+    logoG.addColorStop(0, `rgba(79,195,247,${0.06 + 0.03 * Math.sin(t)})`);
+    logoG.addColorStop(1, 'transparent');
+    ctx.fillStyle = logoG;
+    ctx.fillRect(0, 0, w, h);
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ══════════════════════════════════════════
+// PARTICLES
+// ══════════════════════════════════════════
+(function(){
+  const c = document.getElementById('particle-canvas');
+  const ctx = c.getContext('2d');
+  let w, h;
+  function resize() { c.width = w = window.innerWidth; c.height = h = window.innerHeight; }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const particles = Array.from({length: 60}, () => ({
+    x: Math.random() * innerWidth,
+    y: Math.random() * innerHeight,
+    vy: -(Math.random() * 0.3 + 0.1),
+    vx: (Math.random() - 0.5) * 0.2,
+    r: Math.random() * 1.5 + 0.5,
+    alpha: Math.random() * 0.4 + 0.1,
+    hue: Math.random() > 0.6 ? 200 : 260,
+  }));
+
+  function drawP() {
+    ctx.clearRect(0, 0, w, h);
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.y < -10) { p.y = h + 10; p.x = Math.random() * w; }
+      if (p.x < 0) p.x = w; if (p.x > w) p.x = 0;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `hsla(${p.hue},80%,70%,${p.alpha})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(drawP);
+  }
+  drawP();
+})();
+
+// ══════════════════════════════════════════
+// LOCKSCREEN CANVAS
+// ══════════════════════════════════════════
+(function(){
+  const c = document.getElementById('ls-canvas');
+  const ctx = c.getContext('2d');
+  let w, h, t = 0;
+  function resize() { c.width = w = window.innerWidth; c.height = h = window.innerHeight; }
+  resize();
+  const orbs2 = Array.from({length:5},(_,i)=>({
+    x:Math.random(),y:Math.random(),
+    vx:(Math.random()-0.5)*0.0004,vy:(Math.random()-0.5)*0.0004,
+    r:Math.random()*0.4+0.2,
+    hue:[210,250,190,280,200][i],a:Math.random()*0.12+0.06
+  }));
+  function drawLS(){
+    ctx.clearRect(0,0,w,h);
+    const bg = ctx.createLinearGradient(0,0,w,h);
+    bg.addColorStop(0,'#020818');bg.addColorStop(0.5,'#050c25');bg.addColorStop(1,'#030610');
+    ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
+    t+=0.005;
+    orbs2.forEach(o=>{
+      o.x+=o.vx;o.y+=o.vy;
+      if(o.x<0||o.x>1)o.vx*=-1;if(o.y<0||o.y>1)o.vy*=-1;
+      const g=ctx.createRadialGradient(o.x*w,o.y*h,0,o.x*w,o.y*h,o.r*Math.min(w,h));
+      g.addColorStop(0,`hsla(${o.hue},80%,60%,${o.a+Math.sin(t)*0.03})`);
+      g.addColorStop(1,'transparent');
+      ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+    });
+    requestAnimationFrame(drawLS);
+  }
+  drawLS();
+})();
+
+// ══════════════════════════════════════════
+// CLOCK
+// ══════════════════════════════════════════
+function updateClock() {
+  const now = new Date();
+  const h = now.getHours().toString().padStart(2,'0');
+  const m = now.getMinutes().toString().padStart(2,'0');
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const sd = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const timeStr = `${h}:${m}`;
+  const dateStr = `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
+  const shortDate = `${sd[now.getDay()]} ${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getDate().toString().padStart(2,'0')}`;
+  document.getElementById('ls-time').textContent = timeStr;
+  document.getElementById('ls-date').textContent = dateStr;
+  document.getElementById('tb-time').textContent = timeStr;
+  document.getElementById('tb-date').textContent = shortDate;
+  document.getElementById('wp-time').textContent = timeStr;
+  document.getElementById('wp-date').textContent = dateStr;
+}
+updateClock();
+setInterval(updateClock, 10000);
+
+// Simulated CPU usage fluctuation
+setInterval(() => {
+  const el = document.getElementById('cpu-usage');
+  if (el) el.textContent = (Math.random() * 20 + 6).toFixed(0) + '%';
+}, 2000);
+
+// ══════════════════════════════════════════
+// LOCKSCREEN
+// ══════════════════════════════════════════
+document.getElementById('lockscreen').onclick = function(){
+  this.classList.add('hide');
+  setTimeout(() => this.style.display='none', 700);
+};
+function lockScreen(){
+  const ls = document.getElementById('lockscreen');
+  ls.style.display = 'flex';
+  setTimeout(() => ls.classList.remove('hide'), 10);
+  closeStart();
+}
+
+// ══════════════════════════════════════════
+// DESKTOP ICON SELECTION
+// ══════════════════════════════════════════
+function selectIcon(el) {
+  document.querySelectorAll('.desk-icon').forEach(i => i.classList.remove('selected'));
+  el.classList.add('selected');
+}
+document.getElementById('desktop').addEventListener('click', e => {
+  if (!e.target.closest('.desk-icon')) {
+    document.querySelectorAll('.desk-icon').forEach(i => i.classList.remove('selected'));
+  }
+});
+
+// ══════════════════════════════════════════
+// START MENU
+// ══════════════════════════════════════════
+function toggleStart() {
+  startOpen = !startOpen;
+  document.getElementById('start-menu').classList.toggle('open', startOpen);
+  document.getElementById('start-btn').classList.toggle('active', startOpen);
+  if (startOpen) { copilotOpen = false; document.getElementById('copilot-panel').classList.remove('open'); }
+  if (startOpen) { setTimeout(()=>document.getElementById('sm-search-input').focus(), 300); }
+}
+function closeStart() { startOpen = false; document.getElementById('start-menu').classList.remove('open'); document.getElementById('start-btn').classList.remove('active'); }
+function filterApps(q) {
+  document.querySelectorAll('#sm-apps-grid .sm-app').forEach(el => {
+    el.style.display = el.querySelector('span').textContent.toLowerCase().includes(q.toLowerCase()) || !q ? '' : 'none';
+  });
+}
+
+// ══════════════════════════════════════════
+// WIDGETS
+// ══════════════════════════════════════════
+function toggleWidgets() {
+  widgetsOpen = !widgetsOpen;
+  document.getElementById('widget-panel').classList.toggle('open', widgetsOpen);
+  document.getElementById('widget-btn').classList.toggle('active', widgetsOpen);
+}
+
+// ══════════════════════════════════════════
+// COPILOT
+// ══════════════════════════════════════════
+function toggleCopilot() {
+  copilotOpen = !copilotOpen;
+  document.getElementById('copilot-panel').classList.toggle('open', copilotOpen);
+  document.getElementById('copilot-tb-btn').classList.toggle('active', copilotOpen);
+  if (copilotOpen) { closeStart(); setTimeout(()=>document.getElementById('cp-input').focus(), 300); }
+}
+
+const copilotReplies = {
+  'open file explorer': () => { openApp('explorer'); return "Opening File Explorer! 📁"; },
+  'open files': () => { openApp('explorer'); return "Opening File Explorer! 📁"; },
+  'what time is it': () => { const n=new Date(); return `It's ${n.getHours().toString().padStart(2,'0')}:${n.getMinutes().toString().padStart(2,'0')} right now. ⏰`; },
+  'tell me about windows 12': () => "Windows 12 is Microsoft's most AI-forward OS yet! It features:\n\n• CorePC modular architecture\n• Floating Copilot+ taskbar\n• On-device NPU AI (40+ TOPS required)\n• Smart Recall with AI memory\n• Snap Assist AI layouts\n• Live Captions & AI image generation\n\nI'm running entirely on your device's NPU! 🚀",
+  'show me the weather': () => { toggleWidgets(); return "It's 28°C and partly cloudy in Guwahati, Assam. Widget panel opened! ⛅"; },
+  'open settings': () => { openApp('settings'); return "Opening Settings! ⚙️"; },
+  'open notepad': () => { openApp('notepad'); return "Opening Notepad! 📝"; },
+  'open calculator': () => { openApp('calc'); return "Opening Calculator! 🔢"; },
+  'open music': () => { openApp('music'); return "Opening Music Player! 🎵"; },
+  'open browser': () => { openApp('browser'); return "Opening Edge Browser! 🌐"; },
+  'open terminal': () => { openApp('terminal'); return "Opening Terminal! 💻"; },
+  'open task manager': () => { openApp('taskman'); return "Opening Task Manager! 📊"; },
+  'open paint': () => { openApp('paint'); return "Opening Paint! 🎨"; },
+  'open calendar': () => { openApp('calendar'); return "Opening Calendar! 📅"; },
+  'open maps': () => { openApp('maps'); return "Opening Maps! 🗺️"; },
+  'open teams': () => { openApp('teams'); return "Opening Teams! 💬"; },
+};
+
+function getCopilotReply(msg) {
+  const l = msg.toLowerCase().trim();
+  for (const [k, fn] of Object.entries(copilotReplies)) { if (l.includes(k)) return fn(); }
+  const fallbacks = [
+    `I understand you're asking about "${msg}". As Copilot+, I process this entirely on your NPU for complete privacy. In a full Windows 12 deployment, I'd give you a detailed contextual response!`,
+    `Great question about "${msg}"! On Windows 12 Copilot+ AI PCs, I can understand natural language, search files semantically, manage schedules, and take actions across all your apps.`,
+    `I'm analyzing "${msg}" using your local LLM on the NPU. Windows 12 Copilot+ is always learning from your patterns to give smarter suggestions over time! 🧠`,
+    `On Windows 12, I can help with files, apps, web searches, writing, coding, and much more — all running locally. Try asking me to open an app!`,
+  ];
+  return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+}
+
+function addCopilotMsg(text, type) {
+  const msgs = document.getElementById('cp-msgs');
+  const div = document.createElement('div');
+  div.className = `cp-msg ${type}`;
+  div.style.animation = 'notif-in 0.25s ease';
+  div.textContent = text;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function sendCopilot() {
+  const inp = document.getElementById('cp-input');
+  const msg = inp.value.trim();
+  if (!msg) return;
+  addCopilotMsg(msg, 'user');
+  inp.value = '';
+  document.getElementById('cp-chips').style.display = 'none';
+  const typing = document.createElement('div');
+  typing.className = 'cp-msg ai';
+  typing.innerHTML = '<span style="opacity:0.6">Copilot+ is thinking…</span>';
+  document.getElementById('cp-msgs').appendChild(typing);
+  document.getElementById('cp-msgs').scrollTop = 9999;
+  setTimeout(() => {
+    typing.remove();
+    addCopilotMsg(getCopilotReply(msg), 'ai');
+  }, 700);
+}
+
+function askCopilot(msg) {
+  if (!copilotOpen) toggleCopilot();
+  setTimeout(() => {
+    addCopilotMsg(msg, 'user');
+    document.getElementById('cp-chips').style.display = 'none';
+    setTimeout(() => addCopilotMsg(getCopilotReply(msg), 'ai'), 600);
+  }, copilotOpen ? 0 : 350);
+}
+
+// ══════════════════════════════════════════
+// NOTIFICATIONS
+// ══════════════════════════════════════════
+function showNotif(title, body, icon = '💡') {
+  const container = document.getElementById('notif-container');
+  const n = document.createElement('div');
+  n.className = 'notif';
+  n.innerHTML = `<div class="notif-app">${icon} ${title}</div><div class="notif-title">${title}</div><div class="notif-body">${body}</div>`;
+  container.appendChild(n);
+  n.onclick = () => { n.style.opacity='0'; n.style.transform='translateX(110%)'; n.style.transition='all 0.3s'; setTimeout(()=>n.remove(),300); };
+  setTimeout(() => { n.style.transition='opacity 0.5s,transform 0.5s'; n.style.opacity='0'; n.style.transform='translateX(110%)'; setTimeout(()=>n.remove(),500); }, 4000);
+}
+
+// ══════════════════════════════════════════
+// CONTEXT MENU
+// ══════════════════════════════════════════
+document.getElementById('desktop').addEventListener('contextmenu', e => {
+  e.preventDefault();
+  const m = document.getElementById('ctx-menu');
+  m.style.display = 'block';
+  m.style.left = Math.min(e.clientX, window.innerWidth - 210) + 'px';
+  m.style.top = Math.min(e.clientY, window.innerHeight - 260) + 'px';
+  closeStart();
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('#ctx-menu')) closeCtx();
+  if (!e.target.closest('#start-menu') && !e.target.closest('#start-btn')) closeStart();
+});
+function closeCtx() { document.getElementById('ctx-menu').style.display = 'none'; }
+
+// ══════════════════════════════════════════
+// WINDOW MANAGER
+// ══════════════════════════════════════════
+function createWindow(id, title, icon, width, height, content) {
+  if (windows[id]) { focusWindow(id); if(windows[id].minimized){windows[id].minimized=false;windows[id].el.classList.remove('minimized');} return; }
+  const win = document.createElement('div');
+  win.className = 'win';
+  win.id = 'win-' + id;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const w = Math.min(width, vw - 40);
+  const h = Math.min(height, vh - TASKBAR_H - 20);
+  const left = Math.max(30, Math.floor(Math.random() * (vw - w - 80)) + 30);
+  const top = Math.max(30, Math.floor(Math.random() * (vh - h - TASKBAR_H - 50)) + 30);
+  win.style.cssText = `left:${left}px;top:${top}px;width:${w}px;height:${h}px;`;
+  win.innerHTML = `
+    <div class="win-titlebar" id="tb-${id}">
+      <span class="win-icon-small">${icon}</span>
+      <span class="win-title">${title}</span>
+      <div class="win-controls">
+        <div class="wc-btn" onclick="minimizeWin('${id}')" title="Minimize">⎯</div>
+        <div class="wc-btn" onclick="maximizeWin('${id}')" title="Maximize/Restore">⬜</div>
+        <div class="wc-btn close" onclick="closeWin('${id}')" title="Close">✕</div>
+      </div>
+    </div>
+    <div class="win-body" id="wb-${id}">${content}</div>`;
+  document.body.appendChild(win);
+  windows[id] = { el: win, minimized: false, maximized: false };
+  focusWindow(id);
+  addToTaskbar(id, title, icon);
+  makeDraggable(id);
+  makeResizable(id);
+  win.style.opacity = '0'; win.style.transform = 'scale(0.9) translateY(10px)';
+  requestAnimationFrame(() => {
+    win.style.transition = 'opacity 0.22s,transform 0.22s cubic-bezier(0.34,1.56,0.64,1)';
+    win.style.opacity = '1'; win.style.transform = 'scale(1) translateY(0)';
+    setTimeout(() => win.style.transition = '', 250);
+  });
+  closeStart();
+}
+
+function focusWindow(id) {
+  Object.keys(windows).forEach(k => {
+    if (windows[k]?.el) { windows[k].el.classList.remove('focused'); windows[k].el.style.zIndex = 100; }
+    const tb = document.getElementById('tbapp-' + k);
+    if (tb) tb.classList.remove('active');
+  });
+  if (windows[id]) {
+    windows[id].el.classList.add('focused');
+    windows[id].el.style.zIndex = ++winZ;
+    const tb = document.getElementById('tbapp-' + id);
+    if (tb) tb.classList.add('active');
+  }
+}
+
+function minimizeWin(id) {
+  if (!windows[id]) return;
+  const el = windows[id].el;
+  el.style.transition = 'opacity 0.2s,transform 0.2s';
+  el.style.opacity = '0'; el.style.transform = 'scale(0.85) translateY(20px)';
+  setTimeout(() => { el.classList.add('minimized'); el.style.transition=''; el.style.opacity=''; el.style.transform=''; }, 200);
+  windows[id].minimized = true;
+  const tb = document.getElementById('tbapp-' + id);
+  if (tb) tb.classList.remove('active');
+}
+
+function maximizeWin(id) {
+  if (!windows[id]) return;
+  const w = windows[id], el = w.el;
+  if (w.maximized) {
+    el.style.left = w.sL+'px'; el.style.top = w.sT+'px';
+    el.style.width = w.sW+'px'; el.style.height = w.sH+'px';
+    el.classList.remove('maximized'); w.maximized = false;
+  } else {
+    w.sL=el.offsetLeft; w.sT=el.offsetTop; w.sW=el.offsetWidth; w.sH=el.offsetHeight;
+    el.style.cssText += ';left:0;top:0;width:100vw;height:calc(100vh - '+TASKBAR_H+'px);border-radius:0;';
+    el.classList.add('maximized'); w.maximized = true;
+  }
+}
+
+function closeWin(id) {
+  if (!windows[id]) return;
+  const el = windows[id].el;
+  el.style.transition = 'opacity 0.18s,transform 0.18s';
+  el.style.opacity = '0'; el.style.transform = 'scale(0.92) translateY(8px)';
+  setTimeout(() => { el.remove(); delete windows[id]; removeFromTaskbar(id); }, 180);
+}
+
+function minimizeAll() {
+  Object.keys(windows).forEach(k => {
+    if (windows[k] && !windows[k].minimized) minimizeWin(k);
+  });
+}
+
+function addToTaskbar(id, title, icon) {
+  const tb = document.getElementById('tb-running');
+  const btn = document.createElement('div');
+  btn.className = 'tb-btn'; btn.id = 'tbapp-' + id;
+  btn.title = title; btn.textContent = icon; btn.style.fontSize = '1.2rem';
+  btn.onclick = () => {
+    if (!windows[id]) return;
+    if (windows[id].minimized) {
+      windows[id].minimized = false;
+      const el = windows[id].el;
+      el.classList.remove('minimized');
+      el.style.opacity='0'; el.style.transform='scale(0.9) translateY(10px)';
+      requestAnimationFrame(()=>{
+        el.style.transition='opacity 0.2s,transform 0.2s cubic-bezier(0.34,1.56,0.64,1)';
+        el.style.opacity='1'; el.style.transform='scale(1) translateY(0)';
+        setTimeout(()=>el.style.transition='',220);
+      });
+      focusWindow(id);
+    } else if (windows[id].el.classList.contains('focused')) {
+      minimizeWin(id);
+    } else { focusWindow(id); }
+  };
+  tb.appendChild(btn);
+}
+function removeFromTaskbar(id) { const b=document.getElementById('tbapp-'+id); if(b)b.remove(); }
+
+// ══════════════════════════════════════════
+// DRAG
+// ══════════════════════════════════════════
+function makeDraggable(id) {
+  const tb = document.getElementById('tb-' + id);
+  const win = document.getElementById('win-' + id);
+  let ox, oy, sx, sy;
+  tb.addEventListener('mousedown', e => {
+    if (e.target.closest('.wc-btn')) return;
+    focusWindow(id);
+    if (windows[id]?.maximized) return;
+    ox=win.offsetLeft; oy=win.offsetTop; sx=e.clientX; sy=e.clientY;
+    dragState = {id,ox,oy,sx,sy};
+    e.preventDefault();
+  });
+}
+
+document.addEventListener('mousemove', e => {
+  if (!dragState) return;
+  const dx = e.clientX - dragState.sx, dy = e.clientY - dragState.sy;
+  const win = document.getElementById('win-' + dragState.id);
+  if (!win) return;
+  let nx = dragState.ox + dx, ny = dragState.oy + dy;
+  nx = Math.max(-win.offsetWidth/2, Math.min(window.innerWidth - win.offsetWidth/2, nx));
+  ny = Math.max(0, Math.min(window.innerHeight - TASKBAR_H - 40, ny));
+  win.style.left = nx+'px'; win.style.top = ny+'px';
+  document.getElementById('snap-left').style.opacity = nx < 20 ? '1' : '0';
+  document.getElementById('snap-right').style.opacity = nx + win.offsetWidth > window.innerWidth - 20 ? '1' : '0';
+});
+
+document.addEventListener('mouseup', e => {
+  if (!dragState) return;
+  const win = document.getElementById('win-' + dragState.id);
+  if (win) {
+    const nx = win.offsetLeft;
+    if (nx < 20) snapLeft(dragState.id);
+    else if (nx + win.offsetWidth > window.innerWidth - 20) snapRight(dragState.id);
+  }
+  document.getElementById('snap-left').style.opacity = '0';
+  document.getElementById('snap-right').style.opacity = '0';
+  dragState = null;
+});
+
+function snapLeft(id) { const w=document.getElementById('win-'+id);w.style.cssText+=';left:4px;top:4px;width:50vw;height:calc(100vh - '+(TASKBAR_H+8)+'px);'; }
+function snapRight(id) { const w=document.getElementById('win-'+id);w.style.cssText+=';left:50vw;top:4px;width:calc(50vw - 4px);height:calc(100vh - '+(TASKBAR_H+8)+'px);'; }
+
+// ══════════════════════════════════════════
+// RESIZE
+// ══════════════════════════════════════════
+function makeResizable(id) {
+  const win = document.getElementById('win-'+id);
+  const handle = document.createElement('div');
+  handle.style.cssText='position:absolute;bottom:0;right:0;width:14px;height:14px;cursor:se-resize;z-index:10;';
+  win.appendChild(handle);
+  let rState = null;
+  handle.addEventListener('mousedown', e => {
+    rState = {x:e.clientX,y:e.clientY,w:win.offsetWidth,h:win.offsetHeight};
+    e.preventDefault(); e.stopPropagation();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!rState) return;
+    win.style.width = Math.max(300, rState.w + e.clientX - rState.x) + 'px';
+    win.style.height = Math.max(200, rState.h + e.clientY - rState.y) + 'px';
+  });
+  document.addEventListener('mouseup', () => rState = null);
+}
+
+document.addEventListener('mousedown', e => {
+  const w = e.target.closest('.win');
+  if (w) focusWindow(w.id.replace('win-',''));
+});
+
+// ══════════════════════════════════════════
+// APP ROUTER
+// ══════════════════════════════════════════
+function openApp(id) {
+  switch(id){
+    case 'explorer': openExplorer(); break;
+    case 'settings': openSettings(); break;
+    case 'notepad': openNotepad(); break;
+    case 'calc': openCalc(); break;
+    case 'browser': openBrowser(); break;
+    case 'music': openMusic(); break;
+    case 'photos': openPhotos(); break;
+    case 'terminal': openTerminal(); break;
+    case 'taskman': openTaskManager(); break;
+    case 'paint': openPaint(); break;
+    case 'calendar': openCalendar(); break;
+    case 'maps': openMaps(); break;
+    case 'teams': openTeams(); break;
+    case 'copilot': toggleCopilot(); break;
+    default: showNotif(id, 'App is launching…', '📦');
+  }
+}
+
+// ══════════════════════════════════════════
+// FILE EXPLORER
+// ══════════════════════════════════════════
+function openExplorer() {
+  const files = [
+    {ico:'📁',name:'Documents'},{ico:'📁',name:'Downloads'},{ico:'📁',name:'Pictures'},
+    {ico:'📁',name:'Music'},{ico:'📁',name:'Videos'},{ico:'📁',name:'Desktop'},
+    {ico:'📄',name:'report_q2.docx'},{ico:'📊',name:'data.xlsx'},{ico:'📝',name:'notes.txt'},
+    {ico:'🖼️',name:'wallpaper.jpg'},{ico:'📦',name:'archive.zip'},{ico:'🎵',name:'track1.mp3'},
+    {ico:'📽️',name:'video.mp4'},{ico:'💾',name:'backup.iso'},{ico:'🔧',name:'config.ini'},
+    {ico:'📝',name:'readme.md'},{ico:'🐍',name:'script.py'},{ico:'🌐',name:'index.html'},
+  ];
+  const filesHtml = files.map(f => `<div class="fe-file" ondblclick="showNotif('${f.name}','Opening ${f.name}…','${f.ico}')"><div class="ico">${f.ico}</div><span>${f.name}</span></div>`).join('');
+  createWindow('explorer','File Explorer','📁',860,540,`
+    <div style="display:flex;height:100%;flex-direction:column;">
+      <div class="fe-toolbar">
+        <div class="fe-btn" title="Back">⬅</div>
+        <div class="fe-btn" title="Forward">➡</div>
+        <div class="fe-btn" title="Up">⬆</div>
+        <div class="fe-btn" title="Refresh">🔄</div>
+        <div class="fe-path">This PC › Users › Windows User › Documents</div>
+        <div class="fe-btn" onclick="showNotif('Search','Type to search your files…','🔍')">🔍 Search</div>
+        <div class="fe-btn" onclick="showNotif('AI Sort','Copilot+ is organizing your files…','🤖')">🤖 AI Sort</div>
+        <div class="fe-btn">⊞ Grid</div>
+      </div>
+      <div class="fe-content-area">
+        <div class="fe-sidebar">
+          <div class="fe-sidebar-item active"><span class="ico">🏠</span>Quick Access</div>
+          <div class="fe-sidebar-item"><span class="ico">⭐</span>Starred</div>
+          <div class="fe-sidebar-item"><span class="ico">🕐</span>Recent</div>
+          <div style="height:1px;background:rgba(255,255,255,0.06);margin:8px 0;"></div>
+          <div class="fe-sidebar-item"><span class="ico">🖥️</span>This PC</div>
+          <div class="fe-sidebar-item"><span class="ico">📁</span>Desktop</div>
+          <div class="fe-sidebar-item"><span class="ico">📄</span>Documents</div>
+          <div class="fe-sidebar-item"><span class="ico">⬇</span>Downloads</div>
+          <div class="fe-sidebar-item"><span class="ico">🖼️</span>Pictures</div>
+          <div class="fe-sidebar-item"><span class="ico">🎵</span>Music</div>
+          <div class="fe-sidebar-item"><span class="ico">📽️</span>Videos</div>
+          <div style="height:1px;background:rgba(255,255,255,0.06);margin:8px 0;"></div>
+          <div class="fe-sidebar-item"><span class="ico">☁️</span>OneDrive</div>
+          <div class="fe-sidebar-item"><span class="ico">🌐</span>Network</div>
+          <div class="fe-sidebar-item"><span class="ico">🗑️</span>Recycle Bin</div>
+        </div>
+        <div class="fe-files">${filesHtml}</div>
+      </div>
+    </div>`);
+}
+
+// ══════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════
+function openSettings() {
+  createWindow('settings','Settings','⚙️',880,580,`
+    <div class="settings-layout">
+      <div class="settings-nav">
+        <div style="padding:8px 12px 14px;"><div style="display:flex;align-items:center;gap:10px;background:rgba(79,195,247,0.08);border-radius:12px;padding:10px;margin-bottom:8px;"><div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#4fc3f7,#7c6fff);display:flex;align-items:center;justify-content:center;font-size:1.1rem;">W</div><div><div style="font-size:0.85rem;font-weight:600;color:var(--text)">Windows User</div><div style="font-size:0.72rem;color:var(--text-muted)">user@windowsai.com</div></div></div></div>
+        <div class="settings-nav-item active" onclick="settingsPage(this,'System')"><span class="ico">🖥️</span>System</div>
+        <div class="settings-nav-item" onclick="settingsPage(this,'Bluetooth & Devices')"><span class="ico">🔵</span>Bluetooth</div>
+        <div class="settings-nav-item" onclick="settingsPage(this,'Network & Internet')"><span class="ico">📶</span>Network</div>
+        <div class="settings-nav-item" onclick="settingsPage(this,'Personalization')"><span class="ico">🎨</span>Personalize</div>
+        <div class="settings-nav-item" onclick="settingsPage(this,'Apps')"><span class="ico">📦</span>Apps</div>
+        <div class="settings-nav-item" onclick="settingsPage(this,'Accounts')"><span class="ico">👤</span>Accounts</div>
+        <div class="settings-nav-item" onclick="settingsPage(this,'Copilot+ AI')"><span class="ico">🤖</span>Copilot+ AI</div>
+        <div class="settings-nav-item" onclick="settingsPage(this,'Privacy & Security')"><span class="ico">🔒</span>Privacy</div>
+        <div class="settings-nav-item" onclick="settingsPage(this,'Windows Update')"><span class="ico">🔄</span>Update</div>
+      </div>
+      <div class="settings-content" id="settings-content">
+        <div class="settings-title">System</div>
+        <div class="settings-subtitle">Display, sound, notifications, power — optimized by Copilot+ AI</div>
+        <div class="settings-row"><div class="settings-row-info"><div class="label">Dark Mode</div><div class="desc">Enable dark theme across Windows 12</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+        <div class="settings-row"><div class="settings-row-info"><div class="label">Night Light</div><div class="desc">Warmer screen colors after sunset</div></div><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+        <div class="settings-row"><div class="settings-row-info"><div class="label">Brightness</div><div class="desc">Current: 80%</div></div><input type="range" class="settings-slider" min="0" max="100" value="80"></div>
+        <div class="settings-row"><div class="settings-row-info"><div class="label">Volume</div><div class="desc">System volume: 65%</div></div><input type="range" class="settings-slider" min="0" max="100" value="65"></div>
+        <div class="settings-row"><div class="settings-row-info"><div class="label">Notifications</div><div class="desc">Show app and AI notifications</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+        <div class="settings-row"><div class="settings-row-info"><div class="label">Storage Sense</div><div class="desc">Automatically free up space using AI</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+        <div class="settings-row"><div class="settings-row-info"><div class="label">AI-Powered Search</div><div class="desc">Semantic file search using on-device AI</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+      </div>
+    </div>`);
+}
+
+function settingsPage(el, title) {
+  document.querySelectorAll('.settings-nav-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  const pages = {
+    'Copilot+ AI':`<div class="settings-title">Copilot+ AI</div><div class="settings-subtitle">Manage your on-device AI experience powered by the Neural Processing Unit</div>
+      <div style="background:linear-gradient(135deg,rgba(79,195,247,0.1),rgba(124,111,255,0.08));border:1px solid rgba(79,195,247,0.2);border-radius:14px;padding:16px;margin-bottom:18px;display:flex;gap:12px;align-items:center;">
+        <div style="font-size:2rem;">🤖</div>
+        <div><div style="font-size:0.9rem;font-weight:600;color:#4fc3f7">Copilot+ Active</div><div style="font-size:0.78rem;color:var(--text-muted);margin-top:3px">NPU: 23% · LLM: phi-4-mini-4k · 100% Private</div></div>
+      </div>
+      <div class="settings-row"><div class="settings-row-info"><div class="label">Copilot+ Always On</div><div class="desc">Keep AI ready at all times via NPU</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+      <div class="settings-row"><div class="settings-row-info"><div class="label">Smart Recall</div><div class="desc">AI memory of everything you've seen</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+      <div class="settings-row"><div class="settings-row-info"><div class="label">Local LLM Processing</div><div class="desc">All AI runs on device, never sent to cloud</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+      <div class="settings-row"><div class="settings-row-info"><div class="label">Live Captions with AI Translation</div><div class="desc">Real-time captions for any audio in 40+ languages</div></div><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+      <div class="settings-row"><div class="settings-row-info"><div class="label">AI Image Generation</div><div class="desc">Cocreator & Paint AI powered by NPU</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>`,
+    'Privacy & Security':`<div class="settings-title">Privacy & Security</div><div class="settings-subtitle">Control your data — all Copilot+ AI runs locally on your device</div>
+      <div class="settings-row"><div class="settings-row-info"><div class="label">On-Device AI Only</div><div class="desc">Copilot+ never sends your data to Microsoft servers</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+      <div class="settings-row"><div class="settings-row-info"><div class="label">Diagnostic Data</div><div class="desc">Send minimal anonymous usage data</div></div><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+      <div class="settings-row"><div class="settings-row-info"><div class="label">Location Access</div><div class="desc">Allow apps to use your location</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+      <div class="settings-row"><div class="settings-row-info"><div class="label">Camera Access</div><div class="desc">Allow apps to use your camera</div></div><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+      <div class="settings-row"><div class="settings-row-info"><div class="label">Windows Hello</div><div class="desc">Sign in with face, fingerprint, or PIN</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>`,
+    'Windows Update':`<div class="settings-title">Windows Update</div><div class="settings-subtitle">Keep Windows 12 up to date</div>
+      <div style="background:rgba(0,200,100,0.08);border:1px solid rgba(0,200,100,0.2);border-radius:14px;padding:18px;margin-bottom:18px;">
+        <div style="font-size:1rem;color:#00cc88;font-weight:600;margin-bottom:4px;">✓ Windows 12 is up to date</div>
+        <div style="font-size:0.8rem;color:var(--text-muted)">Version 12.0.26100.2033 (CorePC) · Updated today at 3:00 AM</div>
+      </div>
+      <div class="settings-row"><div class="settings-row-info"><div class="label">Active Hours</div><div class="desc">9:00 AM – 11:00 PM · Updates install during off-hours</div></div><span style="font-size:0.82rem;color:#4fc3f7;cursor:pointer">Change</span></div>
+      <div class="settings-row"><div class="settings-row-info"><div class="label">CorePC Instant Updates</div><div class="desc">Updates apply in background without restarting</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+      <div class="settings-row"><div class="settings-row-info"><div class="label">Insider Program</div><div class="desc">Get early access to new Windows 12 features</div></div><div class="toggle" onclick="this.classList.toggle('on')"></div></div>`,
+    'Personalization':`<div class="settings-title">Personalization</div><div class="settings-subtitle">Customize Windows 12 to look and feel the way you want</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;">
+        ${['🌌 Aurora Dark','🌅 Sunrise','🌊 Ocean','🔥 Ember','🌿 Forest','💜 Violet'].map((t,i)=>`<div onclick="showNotif('Theme','${t} theme applied!','🎨')" style="padding:12px;border-radius:12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);cursor:pointer;text-align:center;font-size:0.82rem;color:var(--text);transition:all 0.15s;" onmouseenter="this.style.background='rgba(255,255,255,0.08)'" onmouseleave="this.style.background='rgba(255,255,255,0.04)'">${t}</div>`).join('')}
+      </div>
+      <div class="settings-row"><div class="settings-row-info"><div class="label">Transparency Effects</div><div class="desc">Enable glass & blur effects across the UI</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+      <div class="settings-row"><div class="settings-row-info"><div class="label">Animation Effects</div><div class="desc">Enable smooth transitions and animations</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+      <div class="settings-row"><div class="settings-row-info"><div class="label">Accent Color</div><div class="desc">Choose your highlight color</div></div><div style="display:flex;gap:6px;">${['#4fc3f7','#7c6fff','#00cc88','#ff6b6b','#ffd700'].map(c=>`<div onclick="showNotif('Accent','Color applied!','🎨')" style="width:22px;height:22px;border-radius:50%;background:${c};cursor:pointer;box-shadow:0 0 8px ${c}44;"></div>`).join('')}</div></div>`,
+  };
+  const content = pages[title] || `<div class="settings-title">${title}</div><div class="settings-subtitle">Configure ${title} settings</div>
+    <div class="settings-row"><div class="settings-row-info"><div class="label">Option 1</div><div class="desc">Enable this feature</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+    <div class="settings-row"><div class="settings-row-info"><div class="label">Option 2</div><div class="desc">Configure advanced options</div></div><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+    <div class="settings-row"><div class="settings-row-info"><div class="label">Option 3</div><div class="desc">Manage preferences</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>`;
+  document.getElementById('settings-content').innerHTML = content;
+}
+
+// ══════════════════════════════════════════
+// NOTEPAD
+// ══════════════════════════════════════════
+function openNotepad() {
+  createWindow('notepad','Notepad','📝',720,500,`
+    <div style="display:flex;flex-direction:column;height:100%;">
+      <div class="notepad-toolbar">
+        <div class="np-btn" onclick="showNotif('File','File menu opened','📄')">📄 File</div>
+        <div class="np-btn" onclick="showNotif('Edit','Edit menu opened','✏️')">✏️ Edit</div>
+        <div class="np-btn" onclick="showNotif('Format','Format menu opened','🔤')">🔤 Format</div>
+        <div class="np-btn" onclick="showNotif('View','View menu opened','👁️')">👁️ View</div>
+        <div style="flex:1"></div>
+        <div class="np-btn" onclick="aiSummarize()" style="background:rgba(79,195,247,0.1);color:#4fc3f7;border:1px solid rgba(79,195,247,0.2);border-radius:8px;">🤖 Summarize</div>
+        <div class="np-btn" onclick="showNotif('AI Grammar','Grammar & spelling fixed!','✅')">✅ Fix Grammar</div>
+        <div class="np-btn" onclick="showNotif('AI Rewrite','Text rewritten with AI!','✨')">✨ Rewrite</div>
+      </div>
+      <textarea class="np-textarea" id="np-text-0" placeholder="Start typing here…
+
+Windows 12 Notepad features:
+• AI-powered grammar & spelling correction
+• Smart autocomplete with Copilot+  
+• Instant summarization
+• Real-time word count
+• Markdown preview mode" oninput="updateNpStatus(this)" onclick="updateNpStatus(this)" onkeyup="updateNpStatus(this)"></textarea>
+      <div class="np-statusbar">
+        <span id="np-status-0">Ln 1, Col 1</span>
+        <span id="np-words-0">0 words</span>
+        <span>UTF-8</span>
+        <span>Windows (CRLF)</span>
+        <span style="color:#4fc3f7">🤖 AI Ready</span>
+      </div>
+    </div>`);
+}
+
+function updateNpStatus(ta) {
+  const id = ta.id.replace('np-text-','');
+  const lines = ta.value.split('\n');
+  const pos = ta.selectionStart;
+  let ln=1,col=1,chars=0;
+  for(let i=0;i<lines.length;i++){chars+=lines[i].length+1;if(chars>pos){ln=i+1;col=pos-(chars-lines[i].length-1)+1;break;}}
+  const words = ta.value.trim() ? ta.value.trim().split(/\s+/).length : 0;
+  const s=document.getElementById('np-status-'+id);
+  const w=document.getElementById('np-words-'+id);
+  if(s)s.textContent=`Ln ${ln}, Col ${col}`;
+  if(w)w.textContent=`${words} word${words!==1?'s':''}`;
+}
+
+function aiSummarize() {
+  const ta = document.getElementById('np-text-0');
+  if (!ta || !ta.value.trim()) { showNotif('Notepad AI','No text to summarize!','📝'); return; }
+  showNotif('Copilot+ AI',`Summarized: "${ta.value.trim().slice(0,60)}…" — ${ta.value.trim().split(/\s+/).length} words condensed by AI.`,'🤖');
+}
+
+// ══════════════════════════════════════════
+// CALCULATOR
+// ══════════════════════════════════════════
+let calcExpr='', calcCurrent='0', calcNewNum=true, calcOp='';
+function openCalc() {
+  const buttons = [
+    {l:'MC',t:'special'},{l:'MR',t:'special'},{l:'M+',t:'special'},{l:'C',t:'special'},
+    {l:'7'},{l:'8'},{l:'9'},{l:'÷',t:'op'},
+    {l:'4'},{l:'5'},{l:'6'},{l:'×',t:'op'},
+    {l:'1'},{l:'2'},{l:'3'},{l:'−',t:'op'},
+    {l:'±',t:'special'},{l:'0'},{l:'.',t:'special'},{l:'+',t:'op'},
+    {l:'⌫',t:'special'},{l:'00'},{l:'%',t:'special'},{l:'=',t:'eq'},
+  ];
+  const calcHtml = buttons.map(b=>`<div class="calc-btn${b.t?' '+b.t:''}" onclick="calcPress('${b.l}')">${b.l}</div>`).join('');
+  createWindow('calc','Calculator','🔢',310,470,`
+    <div style="display:flex;flex-direction:column;height:100%;">
+      <div class="calc-display">
+        <div class="calc-expr" id="calc-expr"></div>
+        <div class="calc-num" id="calc-num">0</div>
+      </div>
+      <div class="calc-grid">${calcHtml}</div>
+    </div>`);
+}
+
+function calcPress(k) {
+  const numEl=document.getElementById('calc-num');
+  const exprEl=document.getElementById('calc-expr');
+  if(!numEl)return;
+  if(['MC','MR','M+'].includes(k))return;
+  if(k==='C'){calcCurrent='0';calcExpr='';calcOp='';calcNewNum=true;numEl.textContent='0';exprEl.textContent='';return;}
+  if(k==='⌫'){calcCurrent=calcCurrent.length>1?calcCurrent.slice(0,-1):'0';numEl.textContent=calcCurrent;return;}
+  if(k==='±'){calcCurrent=(parseFloat(calcCurrent)*-1).toString();numEl.textContent=calcCurrent;return;}
+  if(k==='%'){calcCurrent=(parseFloat(calcCurrent)/100).toString();numEl.textContent=calcCurrent;return;}
+  if(['÷','×','−','+'].includes(k)){
+    if(calcOp&&!calcNewNum){const r=doCalc(parseFloat(calcExpr.split(' ')[0]),parseFloat(calcCurrent),calcOp);calcCurrent=roundNum(r).toString();}
+    calcOp=k;calcExpr=calcCurrent+' '+k;exprEl.textContent=calcExpr;calcNewNum=true;numEl.textContent=calcCurrent;return;
+  }
+  if(k==='='){
+    if(!calcOp)return;
+    exprEl.textContent=calcExpr+' '+calcCurrent+' =';
+    calcCurrent=roundNum(doCalc(parseFloat(calcExpr.split(' ')[0]),parseFloat(calcCurrent),calcOp)).toString();
+    numEl.textContent=calcCurrent;
+    numEl.style.transform='scale(1.05)';setTimeout(()=>numEl.style.transform='',150);
+    calcOp='';calcNewNum=true;return;
+  }
+  if(k==='.'){if(calcNewNum){calcCurrent='0.';calcNewNum=false;}else if(!calcCurrent.includes('.'))calcCurrent+='.';numEl.textContent=calcCurrent;return;}
+  if(k==='00')k='0';
+  if(calcNewNum){calcCurrent=k;calcNewNum=false;}else{calcCurrent=calcCurrent==='0'?k:calcCurrent+k;}
+  if(calcCurrent.length>13)calcCurrent=calcCurrent.slice(0,13);
+  numEl.textContent=calcCurrent;
+}
+function doCalc(a,b,op){if(op==='÷')return b!==0?a/b:Infinity;if(op==='×')return a*b;if(op==='−')return a-b;if(op==='+')return a+b;return b;}
+function roundNum(n){return Math.round(n*1e8)/1e8;}
+
+// ══════════════════════════════════════════
+// BROWSER
+// ══════════════════════════════════════════
+function openBrowser() {
+  createWindow('browser','Microsoft Edge','🌐',940,600,`
+    <div style="display:flex;flex-direction:column;height:100%;">
+      <div class="browser-bar">
+        <div class="browser-navbtn" title="Back">⬅</div>
+        <div class="browser-navbtn" title="Forward">➡</div>
+        <div class="browser-navbtn" title="Refresh">🔄</div>
+        <div class="browser-navbtn" title="Home">🏠</div>
+        <input class="browser-url" id="browser-url-0" value="edge://newtab" onkeydown="if(event.key==='Enter')browserNav(this)">
+        <div class="browser-navbtn" title="Favorites">⭐</div>
+        <div class="browser-navbtn" title="Collections">🗂️</div>
+        <div class="browser-navbtn" onclick="toggleCopilot()" title="Copilot">🤖</div>
+        <div class="browser-navbtn" title="Settings">⚙️</div>
+      </div>
+      <div style="display:flex;gap:4px;padding:4px 12px;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.015);flex-shrink:0;">
+        <div style="padding:5px 14px;border-radius:8px 8px 0 0;font-size:0.78rem;color:var(--text);background:rgba(255,255,255,0.06);cursor:pointer;">🏠 New Tab</div>
+        <div style="padding:5px 14px;border-radius:8px 8px 0 0;font-size:0.78rem;color:var(--text-muted);cursor:pointer;" onclick="showNotif('Edge','New tab opened!','🌐')">+ New tab</div>
+      </div>
+      <div class="browser-content" id="browser-content-0">
+        <div class="browser-homepage">
+          <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:20px;background:rgba(79,195,247,0.08);border:1px solid rgba(79,195,247,0.2);border-radius:10px;padding:8px 14px;display:inline-block;">
+            🤖 Copilot+ AI is ready · Powered by on-device NPU
+          </div>
+          <h2>Good Afternoon</h2>
+          <p style="color:var(--text-muted);font-size:0.9rem;margin-top:4px;">Microsoft Edge on Windows 12 · Copilot+ Edition</p>
+          <div class="browser-search-bar">
+            <span style="font-size:1rem">🔍</span>
+            <input placeholder="Search or enter URL — powered by Bing AI" id="bing-search" onkeydown="if(event.key==='Enter')bingSearch(this.value)">
+            <div style="cursor:pointer;color:#4fc3f7;font-size:1.1rem;transition:transform 0.15s;" onclick="bingSearch(document.getElementById('bing-search').value)" onmouseenter="this.style.transform='scale(1.2)'" onmouseleave="this.style.transform='scale(1)'">⌤</div>
+          </div>
+          <div class="browser-shortcuts">
+            <div class="browser-shortcut" onclick="bingSearch('Bing AI search')"><div class="ico">🔍</div><span>Bing</span></div>
+            <div class="browser-shortcut" onclick="showNotif('Outlook','3 new emails from your team','📧')"><div class="ico">📧</div><span>Outlook</span></div>
+            <div class="browser-shortcut" onclick="showNotif('Teams','Opening Teams…','💬')"><div class="ico">💬</div><span>Teams</span></div>
+            <div class="browser-shortcut" onclick="showNotif('Office','Opening Office 365…','📄')"><div class="ico">📊</div><span>Office</span></div>
+            <div class="browser-shortcut" onclick="showNotif('OneDrive','5 TB synced','☁️')"><div class="ico">☁️</div><span>OneDrive</span></div>
+            <div class="browser-shortcut" onclick="showNotif('YouTube','Opening YouTube…','▶️')"><div class="ico">▶️</div><span>YouTube</span></div>
+            <div class="browser-shortcut" onclick="bingSearch('GitHub')"><div class="ico">🐙</div><span>GitHub</span></div>
+            <div class="browser-shortcut" onclick="showNotif('Store','Microsoft Store…','🛒')"><div class="ico">🛒</div><span>Store</span></div>
+          </div>
+        </div>
+      </div>
+    </div>`);
+}
+
+function browserNav(inp) {
+  const url = inp.value;
+  const content = document.getElementById('browser-content-0');
+  if (!content) return;
+  content.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;">
+    <div style="font-size:2.2rem;animation:spin-disc 2s linear infinite;">⟳</div>
+    <div style="font-size:0.95rem;color:var(--text);font-weight:500;">${url}</div>
+    <div style="font-size:0.82rem;color:var(--text-muted);max-width:420px;text-align:center;line-height:1.6;">Simulated browser environment in Windows 12 demo. External browsing requires a real browser, but all other features work!</div>
+    <div class="browser-search-bar" style="width:min(400px,90%);margin:0"><span>🔍</span><input placeholder="Search with Bing AI…" onkeydown="if(event.key==='Enter')bingSearch(this.value)"></div>
+  </div>`;
+}
+
+function bingSearch(q) {
+  if (!q) return;
+  const content = document.getElementById('browser-content-0');
+  if (!content) return;
+  const urlInp = document.getElementById('browser-url-0');
+  if (urlInp) urlInp.value = `https://www.bing.com/search?q=${encodeURIComponent(q)}`;
+  content.innerHTML=`<div style="padding:24px;overflow-y:auto;height:100%;">
+    <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:16px;">Bing AI · Results for: <strong style="color:var(--text)">${q}</strong></div>
+    <div style="background:rgba(79,195,247,0.07);border:1px solid rgba(79,195,247,0.18);border-radius:14px;padding:18px;margin-bottom:18px;">
+      <div style="font-size:0.72rem;color:#4fc3f7;margin-bottom:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;">🤖 Copilot+ AI Answer</div>
+      <div style="font-size:0.88rem;color:var(--text);line-height:1.7;">Here's what I found about "<strong>${q}</strong>"… On Windows 12, Bing AI is deeply integrated with Copilot+ to provide instant, contextual answers powered by on-device NPU acceleration. Your searches stay completely private with local AI processing.</div>
+    </div>
+    ${Array.from({length:5},(_,i)=>`<div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.06);cursor:pointer;" onmouseenter="this.style.background='rgba(255,255,255,0.03)'" onmouseleave="this.style.background=''">
+      <div style="font-size:0.7rem;color:#4fc3f7;margin-bottom:3px;">https://example${i+1}.com › ${q.replace(/\s+/g,'-')}</div>
+      <div style="font-size:0.95rem;color:#4fc3f7;margin-bottom:5px;">${q} — ${['Complete Guide','Latest News','Expert Analysis','Tutorial 2026','Official Docs'][i]}</div>
+      <div style="font-size:0.82rem;color:var(--text-muted);line-height:1.5;">Comprehensive information about "${q}". This is a simulated result — in real Windows 12 Edge, you'd see live Bing AI results with citations and generative answers…</div>
+    </div>`).join('')}
+  </div>`;
+}
+
+// ══════════════════════════════════════════
+// MUSIC
+// ══════════════════════════════════════════
+const tracks = [
+  {title:'Stellar Drift',artist:'Aurora AI',dur:215,ico:'🌌',color:'#0a1535,#1a0a45'},
+  {title:'Neon Cascade',artist:'Digital Wave',dur:198,ico:'💜',color:'#1a0535,#350a45'},
+  {title:'Glass Canyon',artist:'The Synthetics',dur:247,ico:'🔵',color:'#053535,#0a4545'},
+  {title:'Midnight Flux',artist:'CloudSynth',dur:183,ico:'🌙',color:'#0a0a35,#1a1a50'},
+  {title:'Electric Dawn',artist:'NeuralBeat',dur:225,ico:'⚡',color:'#350a05,#4a1a08'},
+];
+
+function openMusic() {
+  const t = tracks[currentTrack];
+  createWindow('music','Windows Music','🎵',400,540,getMusicHTML(t));
+  if (musicPlaying) startMusicTimer();
+}
+
+function getMusicHTML(t) {
+  const pct = musicProgress / t.dur * 100;
+  return `<div class="music-player" id="music-player-inner">
+    <div style="display:flex;gap:6px;margin-bottom:4px;flex-wrap:wrap;justify-content:center;">
+      ${tracks.map((tr,i)=>`<div onclick="switchTrack(${i})" style="padding:5px 10px;border-radius:20px;font-size:0.72rem;cursor:pointer;transition:all 0.15s;background:${i===currentTrack?'rgba(79,195,247,0.2)':'rgba(255,255,255,0.05)'};color:${i===currentTrack?'#4fc3f7':'var(--text-muted)'};border:1px solid ${i===currentTrack?'rgba(79,195,247,0.4)':'var(--border)'};">${tr.ico} ${tr.title.split(' ')[0]}</div>`).join('')}
+    </div>
+    <div class="music-art ${musicPlaying?'playing':''}">
+      <div class="music-art-inner ${musicPlaying?'playing':''}" style="font-size:4rem;">${t.ico}</div>
+    </div>
+    <div class="music-track">
+      <div class="song">${t.title}</div>
+      <div class="artist">${t.artist}</div>
+      <div style="font-size:0.7rem;color:var(--text-muted);margin-top:3px;">♫ Copilot+ Spatial Audio</div>
+    </div>
+    <div style="width:100%">
+      <div class="music-progress" onclick="seekMusic(event,this)">
+        <div class="music-progress-fill" id="music-fill" style="width:${pct}%"></div>
+      </div>
+      <div class="music-time">
+        <span id="music-cur">${fmtTime(musicProgress)}</span>
+        <span>${fmtTime(t.dur)}</span>
+      </div>
+    </div>
+    <div class="music-controls">
+      <div class="mc-btn" onclick="prevTrack()" title="Previous">⏮</div>
+      <div class="mc-btn" onclick="shuffleTrack()" title="Shuffle">🔀</div>
+      <div class="mc-btn play" id="play-btn" onclick="toggleMusic()">${musicPlaying?'⏸':'▶'}</div>
+      <div class="mc-btn" onclick="repeatTrack()" title="Repeat">🔁</div>
+      <div class="mc-btn" onclick="nextTrack()" title="Next">⏭</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;width:100%">
+      <span style="font-size:0.85rem;color:var(--text-muted)">🔈</span>
+      <input type="range" min="0" max="100" value="70" style="flex:1;accent-color:#4fc3f7">
+      <span style="font-size:0.85rem;color:var(--text-muted)">🔊</span>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <div style="padding:5px 12px;background:rgba(79,195,247,0.1);border:1px solid rgba(79,195,247,0.2);border-radius:20px;font-size:0.72rem;color:#4fc3f7;cursor:pointer;" onclick="showNotif('Music AI','Similar tracks found by Copilot+ AI!','🤖')">🤖 AI Recommend</div>
+      <div style="padding:5px 12px;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:20px;font-size:0.72rem;color:var(--text-muted);cursor:pointer;" onclick="showNotif('Lyrics','Lyrics loaded by Copilot+!','📝')">📝 Lyrics</div>
+    </div>
+  </div>`;
+}
+
+function fmtTime(s){const m=Math.floor(s/60);const sec=(s%60).toString().padStart(2,'0');return `${m}:${sec}`;}
+
+function toggleMusic(){
+  musicPlaying=!musicPlaying;
+  const btn=document.getElementById('play-btn');
+  const art=document.querySelector('.music-art');
+  const artI=document.querySelector('.music-art-inner');
+  if(btn)btn.textContent=musicPlaying?'⏸':'▶';
+  if(art)art.className='music-art'+(musicPlaying?' playing':'');
+  if(artI)artI.className='music-art-inner'+(musicPlaying?' playing':'');
+  if(musicPlaying)startMusicTimer();else clearInterval(musicTimer);
+}
+
+function startMusicTimer(){
+  clearInterval(musicTimer);
+  musicTimer=setInterval(()=>{
+    const t=tracks[currentTrack];
+    musicProgress++;
+    if(musicProgress>=t.dur){musicProgress=0;nextTrack();return;}
+    const fill=document.getElementById('music-fill');
+    const cur=document.getElementById('music-cur');
+    if(fill)fill.style.width=(musicProgress/t.dur*100)+'%';
+    if(cur)cur.textContent=fmtTime(musicProgress);
+  },1000);
+}
+
+function seekMusic(e,el){musicProgress=Math.floor(e.offsetX/el.offsetWidth*tracks[currentTrack].dur);const fill=document.getElementById('music-fill');const cur=document.getElementById('music-cur');if(fill)fill.style.width=(musicProgress/tracks[currentTrack].dur*100)+'%';if(cur)cur.textContent=fmtTime(musicProgress);}
+function switchTrack(i){currentTrack=i;musicProgress=0;const wb=document.getElementById('wb-music');if(wb)wb.innerHTML=getMusicHTML(tracks[i]);if(musicPlaying)startMusicTimer();}
+function nextTrack(){switchTrack((currentTrack+1)%tracks.length);}
+function prevTrack(){switchTrack((currentTrack-1+tracks.length)%tracks.length);}
+function shuffleTrack(){switchTrack(Math.floor(Math.random()*tracks.length));}
+function repeatTrack(){musicProgress=0;}
+
+// ══════════════════════════════════════════
+// PHOTOS
+// ══════════════════════════════════════════
+function openPhotos() {
+  createWindow('photos','Photos','🖼️',800,540,`
+    <div style="height:100%;display:flex;flex-direction:column;">
+      <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap;">
+        <div class="fe-btn">📷 All</div><div class="fe-btn">⭐ Favorites</div>
+        <div class="fe-btn">🗓️ Albums</div><div class="fe-btn">📍 Map</div>
+        <div class="fe-btn">👥 People</div>
+        <div style="flex:1"></div>
+        <div class="fe-btn" onclick="showNotif('AI Photo','Copilot+ AI is enhancing your photos!','🤖')">🤖 AI Enhance</div>
+        <div class="fe-btn">🔍</div>
+      </div>
+      <div class="photos-grid" id="photos-grid" style="flex:1;"></div>
+    </div>`);
+  renderPhotos();
+}
+
+const photoThemes = [
+  ['#0a1535','#1a2060','#4fc3f7'],['#1a0535','#350a45','#7c6fff'],
+  ['#053515','#0a4520','#00cc88'],['#350505','#4a0a0a','#ff6b6b'],
+  ['#151535','#1a1a45','#00e5ff'],['#350535','#451045','#bf5fff'],
+  ['#053535','#0a4545','#00ffcc'],['#353505','#45450a','#ffcc00'],
+  ['#1a1005','#2d1a0a','#ff9944'],['#051535','#0a2045','#44aaff'],
+  ['#350a1a','#4a0f25','#ff4488'],['#0a3505','#104a0a','#88ff44'],
+];
+
+function renderPhotos(){
+  const grid=document.getElementById('photos-grid');
+  if(!grid)return;
+  photoThemes.forEach((colors,i)=>{
+    const div=document.createElement('div');
+    div.className='photo-thumb';
+    div.onclick=()=>showNotif('Photos',`Opening photo ${i+1} in editor… AI-enhanced!`,'🖼️');
+    const canvas=document.createElement('canvas');
+    canvas.width=140;canvas.height=140;
+    const ctx=canvas.getContext('2d');
+    const grad=ctx.createLinearGradient(0,0,140,140);
+    grad.addColorStop(0,colors[0]);grad.addColorStop(0.5,colors[1]);grad.addColorStop(1,colors[0]);
+    ctx.fillStyle=grad;ctx.fillRect(0,0,140,140);
+    // Scenic elements
+    for(let j=0;j<6;j++){
+      const x=Math.random()*140,y=Math.random()*140,r=Math.random()*25+8;
+      const rg=ctx.createRadialGradient(x,y,0,x,y,r);
+      rg.addColorStop(0,colors[2]+'44');rg.addColorStop(1,'transparent');
+      ctx.fillStyle=rg;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+    }
+    // Stars
+    for(let j=0;j<15;j++){
+      ctx.beginPath();ctx.arc(Math.random()*140,Math.random()*60,Math.random()*1.2+0.3,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,255,255,'+(Math.random()*0.5+0.2)+')';ctx.fill();
+    }
+    // Horizon glow
+    const hg=ctx.createLinearGradient(0,80,0,140);
+    hg.addColorStop(0,colors[2]+'11');hg.addColorStop(1,colors[2]+'33');
+    ctx.fillStyle=hg;ctx.fillRect(0,80,140,60);
+    div.appendChild(canvas);
+    grid.appendChild(div);
+  });
+}
+
+// ══════════════════════════════════════════
+// TERMINAL
+// ══════════════════════════════════════════
+const termHistory = [];
+let termHIndex = 0;
+function openTerminal() {
+  createWindow('terminal','Windows Terminal — PowerShell 7','💻',760,480,`
+    <div class="terminal-body" id="term-body">
+      <div class="terminal-line" style="color:#4fc3f7">Windows PowerShell 7.4.2 — Windows 12 CorePC</div>
+      <div class="terminal-line" style="color:var(--text-muted)">Copyright (C) Microsoft Corporation. All rights reserved.</div>
+      <div class="terminal-line" style="color:#00cc88;margin:4px 0">Copilot+ AI: Try 'ai help' for AI-powered commands</div>
+      <div class="terminal-line" style="margin-bottom:8px;color:rgba(255,255,255,0.3)">──────────────────────────────────────────────</div>
+    </div>
+    <div style="padding:8px 12px;border-top:1px solid rgba(255,255,255,0.06);background:rgba(0,0,0,0.3);flex-shrink:0;">
+      <div class="terminal-input-row">
+        <span class="terminal-prompt">PS C:\\Users\\WindowsUser&gt; </span>
+        <input class="terminal-input" id="term-input" autofocus
+          onkeydown="handleTermKey(event)" placeholder="Type a command…">
+      </div>
+    </div>`);
+  setTimeout(() => { const inp=document.getElementById('term-input'); if(inp)inp.focus(); }, 100);
+}
+
+function handleTermKey(e) {
+  if (e.key === 'Enter') {
+    const inp = document.getElementById('term-input');
+    const cmd = inp.value.trim();
+    if (!cmd) return;
+    termHistory.push(cmd); termHIndex = termHistory.length;
+    appendTermLine(`PS C:\\Users\\WindowsUser> ${cmd}`, 'color:#4fc3f7');
+    processTermCmd(cmd);
+    inp.value = '';
+  } else if (e.key === 'ArrowUp') {
+    if (termHIndex > 0) { termHIndex--; document.getElementById('term-input').value = termHistory[termHIndex]; }
+    e.preventDefault();
+  } else if (e.key === 'ArrowDown') {
+    if (termHIndex < termHistory.length - 1) { termHIndex++; document.getElementById('term-input').value = termHistory[termHIndex]; }
+    else { termHIndex = termHistory.length; document.getElementById('term-input').value = ''; }
+    e.preventDefault();
+  }
+}
+
+function appendTermLine(text, style='') {
+  const body = document.getElementById('term-body');
+  if (!body) return;
+  const div = document.createElement('div');
+  div.className = 'terminal-line';
+  if (style) div.style.cssText = style;
+  div.textContent = text;
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+}
+
+function processTermCmd(cmd) {
+  const c = cmd.toLowerCase().trim();
+  const now = new Date();
+  const responses = {
+    'help': ()=>[
+      'Available commands:',
+      '  ls / dir         — list directory contents',
+      '  pwd              — print working directory',
+      '  clear            — clear terminal',
+      '  date             — show current date/time',
+      '  sysinfo          — system information',
+      '  ai help          — Copilot+ AI commands',
+      '  neofetch         — system info with art',
+      '  ping <host>      — ping a host',
+      '  whoami           — current user',
+      '  winver           — Windows version',
+    ].forEach(l=>appendTermLine(l,'color:var(--text-muted)')),
+    'ls': ()=>['Documents/', 'Downloads/', 'Desktop/', 'Pictures/', 'Music/', 'Videos/', 'report_q2.docx', 'notes.txt', 'data.xlsx'].forEach(f=>appendTermLine(f,f.endsWith('/')? 'color:#4fc3f7':'color:var(--text)')),
+    'dir': ()=>['Documents/', 'Downloads/', 'Desktop/', 'Pictures/', 'Music/'].forEach(f=>appendTermLine(f,'color:#4fc3f7')),
+    'pwd': ()=>appendTermLine('C:\\Users\\WindowsUser'),
+    'clear': ()=>{ const b=document.getElementById('term-body'); if(b){b.innerHTML='';} },
+    'date': ()=>appendTermLine(now.toLocaleString()),
+    'whoami': ()=>appendTermLine('WIN12\\WindowsUser'),
+    'winver': ()=>[
+      'Windows 12 Pro — CorePC Architecture',
+      'Version 12.0.26100.2033',
+      'Copilot+ AI Edition · NPU Active',
+    ].forEach(l=>appendTermLine(l)),
+    'sysinfo': ()=>[
+      'OS:          Windows 12 Pro (CorePC)',
+      'CPU:         Snapdragon X Elite — 12 cores @ 3.8GHz',
+      'NPU:         42 TOPS — Copilot+ Ready',
+      'RAM:         16 GB LPDDR5X',
+      'Storage:     1 TB NVMe SSD',
+      'GPU:         Adreno X1 Elite',
+      'Build:       12.0.26100.2033',
+    ].forEach(l=>appendTermLine(l,'color:var(--text-muted)')),
+    'neofetch': ()=>[
+      {t:'    ██████╗ ',s:'color:#4fc3f7'},{t:'   ██╔═══╝     OS: Windows 12 CorePC',s:'color:#4fc3f7'},
+      {t:'   ██████╗      CPU: Snapdragon X Elite',s:'color:#4fc3f7'},{t:'   ██╔══╝       RAM: 16GB LPDDR5X',s:'color:#4fc3f7'},
+      {t:'   ╚█████╗      NPU: 42 TOPS (Active)',s:'color:#4fc3f7'},{t:'    ╚════╝      Shell: PowerShell 7.4',s:'color:#4fc3f7'},
+    ].forEach(l=>appendTermLine(l.t,l.s)),
+    'ai help': ()=>[
+      '🤖 Copilot+ AI Commands:',
+      '  ai summarize    — summarize clipboard',
+      '  ai translate    — translate text',
+      '  ai code         — generate code',
+      '  ai fix          — fix last error',
+    ].forEach(l=>appendTermLine(l,'color:#00cc88')),
+    'ai summarize': ()=>appendTermLine('🤖 Copilot+: Clipboard summarized using local phi-4-mini model on NPU (0ms latency, 100% private).','color:#00cc88'),
+    'ai code': ()=>appendTermLine('🤖 Copilot+: Generating code snippet on-device via NPU… Done! Code ready to paste.','color:#00cc88'),
+    'ai fix': ()=>appendTermLine('🤖 Copilot+: Error analyzed and fixed. The issue was a null reference on line 42.','color:#00cc88'),
+    'ping google.com': ()=>[
+      'Pinging google.com (142.250.182.46):',
+      'Reply from 142.250.182.46: time=12ms TTL=118',
+      'Reply from 142.250.182.46: time=11ms TTL=118',
+      'Ping statistics: Packets Sent=4 Received=4 Lost=0 (0% loss)',
+    ].forEach(l=>appendTermLine(l,'color:#00cc88')),
+    'ping': ()=>appendTermLine('Usage: ping <host> — e.g., ping google.com','color:var(--text-muted)'),
+    'echo': ()=>{},
+  };
+  const key = Object.keys(responses).find(k => c === k || c.startsWith(k));
+  if (key && responses[key]) { responses[key](); }
+  else if (c.startsWith('echo ')) { appendTermLine(cmd.slice(5)); }
+  else if (c.startsWith('ping ')) { responses['ping google.com'](); }
+  else { appendTermLine(`'${cmd}' is not recognized. Type 'help' for available commands.`, 'color:#ff6b6b'); }
+}
+
+// ══════════════════════════════════════════
+// TASK MANAGER
+// ══════════════════════════════════════════
+let tmTimer = null;
+function openTaskManager() {
+  const procs = [
+    {n:'System Idle',cpu:0,mem:0.1,gpu:0},{n:'Windows 12 Shell',cpu:1.2,mem:145,gpu:2},
+    {n:'Copilot+ AI (NPU)',cpu:0.3,mem:380,gpu:0},{n:'Microsoft Edge',cpu:4.5,mem:820,gpu:8},
+    {n:'Windows Defender',cpu:0.8,mem:95,gpu:0},{n:'Explorer.exe',cpu:0.2,mem:62,gpu:0},
+    {n:'dwm.exe',cpu:1.5,mem:210,gpu:12},{n:'notepad.exe',cpu:0.1,mem:28,gpu:0},
+    {n:'PowerShell 7',cpu:0.4,mem:55,gpu:0},{n:'Windows Update',cpu:0.3,mem:44,gpu:0},
+  ];
+  const procHtml = procs.map(p=>{
+    const c = (p.cpu + Math.random()*0.5).toFixed(1);
+    return `<div class="tm-proc-row">
+      <div class="tm-proc-name">${p.n}</div>
+      <div class="tm-proc-val">${c}%</div>
+      <div class="tm-proc-val">${p.mem > 0 ? (p.mem+Math.floor(Math.random()*10)) + ' MB' : '—'}</div>
+      <div class="tm-proc-val">${p.gpu}%</div>
+      <div style="flex:0.5;cursor:pointer;color:var(--text-muted);font-size:0.75rem;" onclick="showNotif('Task Manager','${p.n} process terminated','⚠️')">⊗</div>
+    </div>`;
+  }).join('');
+
+  createWindow('taskman','Task Manager','📊',820,560,`
+    <div style="height:100%;display:flex;flex-direction:column;">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:16px;flex-shrink:0;">
+        <div style="text-align:center;flex:1;background:rgba(255,255,255,0.04);border-radius:12px;padding:12px;">
+          <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">CPU</div>
+          <div id="tm-cpu" style="font-size:1.6rem;font-weight:200;color:#4fc3f7;">12%</div>
+          <div style="font-size:0.7rem;color:var(--text-muted)">Snapdragon X Elite</div>
+        </div>
+        <div style="text-align:center;flex:1;background:rgba(255,255,255,0.04);border-radius:12px;padding:12px;">
+          <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">RAM</div>
+          <div style="font-size:1.6rem;font-weight:200;color:#7c6fff;">4.2 GB</div>
+          <div style="font-size:0.7rem;color:var(--text-muted)">of 16 GB</div>
+        </div>
+        <div style="text-align:center;flex:1;background:rgba(255,255,255,0.04);border-radius:12px;padding:12px;">
+          <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">GPU</div>
+          <div style="font-size:1.6rem;font-weight:200;color:#00cc88;">8%</div>
+          <div style="font-size:0.7rem;color:var(--text-muted)">Adreno X1 Elite</div>
+        </div>
+        <div style="text-align:center;flex:1;background:rgba(255,255,255,0.04);border-radius:12px;padding:12px;">
+          <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">NPU</div>
+          <div style="font-size:1.6rem;font-weight:200;color:#4fc3f7;">23%</div>
+          <div style="font-size:0.7rem;color:#4fc3f7;font-size:0.7rem;">🤖 Copilot+</div>
+        </div>
+        <div style="text-align:center;flex:1;background:rgba(255,255,255,0.04);border-radius:12px;padding:12px;">
+          <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">DISK</div>
+          <div style="font-size:1.6rem;font-weight:200;color:#ffd700;">3%</div>
+          <div style="font-size:0.7rem;color:var(--text-muted)">1 TB NVMe</div>
+        </div>
+      </div>
+      <div style="flex:1;overflow:auto;">
+        <div class="tm-header-row">
+          <div style="flex:2">Process</div>
+          <div style="flex:1;text-align:right">CPU</div>
+          <div style="flex:1;text-align:right">Memory</div>
+          <div style="flex:1;text-align:right">GPU</div>
+          <div style="flex:0.5"></div>
+        </div>
+        ${procHtml}
+      </div>
+      <div style="padding:10px 16px;border-top:1px solid var(--border);font-size:0.75rem;color:var(--text-muted);flex-shrink:0;display:flex;gap:20px;">
+        <span>Processes: ${procs.length}</span>
+        <span>Threads: 1,204</span>
+        <span>Up time: 2:14:36</span>
+      </div>
+    </div>`);
+
+  // Live update CPU
+  tmTimer = setInterval(() => {
+    const el = document.getElementById('tm-cpu');
+    if (!el) { clearInterval(tmTimer); return; }
+    el.textContent = (Math.random() * 20 + 5).toFixed(0) + '%';
+  }, 1500);
+}
+
+// ══════════════════════════════════════════
+// PAINT
+// ══════════════════════════════════════════
+let paintTool = 'pen', paintColor = '#4fc3f7', paintSize = 4;
+let painting = false, lastX = 0, lastY = 0;
+
+function openPaint() {
+  const colors = ['#ffffff','#4fc3f7','#7c6fff','#00cc88','#ff6b6b','#ffd700','#ff9944','#ff4488','#44aaff','#00ffcc','#000000','#222244'];
+  const colorsHtml = colors.map(c=>`<div class="color-swatch${c===paintColor?' active':''}" style="background:${c};" onclick="setPaintColor('${c}',this)"></div>`).join('');
+  createWindow('paint','Paint','🎨',900,560,`
+    <div style="display:flex;flex-direction:column;height:100%;">
+      <div class="paint-toolbar">
+        <div class="paint-tool-btn active" id="paint-pen" onclick="setPaintTool('pen',this)" title="Pen">✏️</div>
+        <div class="paint-tool-btn" id="paint-brush" onclick="setPaintTool('brush',this)" title="Brush">🖌️</div>
+        <div class="paint-tool-btn" id="paint-eraser" onclick="setPaintTool('eraser',this)" title="Eraser">⬜</div>
+        <div class="paint-tool-btn" id="paint-fill" onclick="setPaintTool('fill',this)" title="Fill">🪣</div>
+        <div style="width:1px;height:24px;background:var(--border);margin:0 4px;"></div>
+        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">${colorsHtml}</div>
+        <div style="width:1px;height:24px;background:var(--border);margin:0 4px;"></div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:0.75rem;color:var(--text-muted)">Size:</span>
+          <input type="range" min="1" max="30" value="4" style="width:80px;accent-color:#4fc3f7" oninput="paintSize=this.value">
+        </div>
+        <div style="flex:1"></div>
+        <div class="paint-tool-btn" onclick="clearCanvas()" title="Clear">🗑️</div>
+        <div class="paint-tool-btn" onclick="showNotif('Paint AI','Copilot+ AI is enhancing your artwork!','🤖')" title="AI Enhance">🤖</div>
+      </div>
+      <div style="flex:1;overflow:hidden;position:relative;background:#0a0e20;">
+        <canvas id="paint-canvas" class="paint-canvas" style="width:100%;height:100%;"></canvas>
+      </div>
+      <div style="padding:5px 12px;border-top:1px solid var(--border);font-size:0.72rem;color:var(--text-muted);display:flex;gap:16px;flex-shrink:0;">
+        <span id="paint-pos">0, 0</span>
+        <span id="paint-tool-name">Tool: Pen</span>
+        <span>Color: <span id="paint-color-show" style="color:#4fc3f7">#4fc3f7</span></span>
+      </div>
+    </div>`);
+
+  // Init canvas
+  requestAnimationFrame(() => {
+    const canvas = document.getElementById('paint-canvas');
+    if (!canvas) return;
+    canvas.width = canvas.parentElement.offsetWidth;
+    canvas.height = canvas.parentElement.offsetHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#0a0e20';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    canvas.addEventListener('mousedown', e => {
+      painting = true;
+      const r = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / r.width, scaleY = canvas.height / r.height;
+      lastX = (e.clientX - r.left) * scaleX; lastY = (e.clientY - r.top) * scaleY;
+      if (paintTool === 'fill') {
+        ctx.fillStyle = paintColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+    });
+    canvas.addEventListener('mousemove', e => {
+      const r = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / r.width, scaleY = canvas.height / r.height;
+      const x = (e.clientX - r.left) * scaleX, y = (e.clientY - r.top) * scaleY;
+      const posEl = document.getElementById('paint-pos');
+      if (posEl) posEl.textContent = `${Math.floor(x)}, ${Math.floor(y)}`;
+      if (!painting) return;
+      ctx.beginPath();
+      ctx.moveTo(lastX, lastY);
+      ctx.lineTo(x, y);
+      ctx.strokeStyle = paintTool === 'eraser' ? '#0a0e20' : paintColor;
+      ctx.lineWidth = paintTool === 'brush' ? paintSize * 3 : paintTool === 'eraser' ? paintSize * 4 : paintSize;
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      if (paintTool === 'brush') { ctx.shadowBlur = 12; ctx.shadowColor = paintColor; } else { ctx.shadowBlur = 0; }
+      ctx.stroke();
+      lastX = x; lastY = y;
+    });
+    canvas.addEventListener('mouseup', () => painting = false);
+    canvas.addEventListener('mouseleave', () => painting = false);
+  });
+}
+
+function setPaintTool(tool, el) {
+  paintTool = tool;
+  document.querySelectorAll('.paint-tool-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  const tn = document.getElementById('paint-tool-name');
+  if (tn) tn.textContent = 'Tool: ' + tool.charAt(0).toUpperCase() + tool.slice(1);
+}
+function setPaintColor(color, el) {
+  paintColor = color;
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  const cs = document.getElementById('paint-color-show');
+  if (cs) { cs.textContent = color; cs.style.color = color; }
+}
+function clearCanvas() {
+  const c = document.getElementById('paint-canvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#0a0e20'; ctx.fillRect(0, 0, c.width, c.height);
+}
+
+// ══════════════════════════════════════════
+// CALENDAR
+// ══════════════════════════════════════════
+let calDate = new Date();
+function openCalendar() {
+  createWindow('calendar','Calendar','📅',700,520,`
+    <div style="height:100%;display:flex;flex-direction:column;">
+      <div class="cal-header">
+        <div class="cal-nav-btn" onclick="calMove(-1)">‹</div>
+        <div class="cal-month" id="cal-month-title">June 2026</div>
+        <div class="cal-nav-btn" onclick="calMove(1)">›</div>
+        <div style="flex:1"></div>
+        <div class="fe-btn" onclick="calDate=new Date();renderCal()">Today</div>
+        <div class="fe-btn" onclick="showNotif('Calendar AI','Copilot+ found 3 scheduling conflicts to resolve!','🤖')">🤖 Smart Schedule</div>
+      </div>
+      <div id="cal-grid-wrap" style="flex:1;overflow:auto;padding:8px 12px;"></div>
+      <div style="padding:10px 16px;border-top:1px solid var(--border);font-size:0.78rem;color:var(--text-muted);">
+        <span style="color:#4fc3f7">● Today</span>&nbsp;&nbsp;
+        <span style="color:var(--text-muted)">● Has events</span>&nbsp;&nbsp;
+        <span style="color:var(--text-muted)">Click any day to add an event</span>
+      </div>
+    </div>`);
+  renderCal();
+}
+
+const calEvents = {16:[{t:'Stand-up Meeting',c:'#4fc3f7'}], 20:[{t:'Project Deadline',c:'#ff6b6b'}], 25:[{t:'Team Lunch',c:'#00cc88'}]};
+
+function renderCal() {
+  const wrap = document.getElementById('cal-grid-wrap');
+  if (!wrap) return;
+  const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const title = document.getElementById('cal-month-title');
+  if (title) title.textContent = `${months[calDate.getMonth()]} ${calDate.getFullYear()}`;
+  const firstDay = new Date(calDate.getFullYear(), calDate.getMonth(), 1).getDay();
+  const daysInMonth = new Date(calDate.getFullYear(), calDate.getMonth()+1, 0).getDate();
+  const today = new Date();
+  let html = '<div class="cal-grid">';
+  ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => { html += `<div class="cal-day-name">${d}</div>`; });
+  for (let i = 0; i < firstDay; i++) html += `<div class="cal-day other-month">${new Date(calDate.getFullYear(),calDate.getMonth(),0-firstDay+i+1).getDate()}</div>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const isToday = d===today.getDate()&&calDate.getMonth()===today.getMonth()&&calDate.getFullYear()===today.getFullYear();
+    const hasEv = calEvents[d];
+    html += `<div class="cal-day${isToday?' today':''}${hasEv?' has-event':''}" onclick="calDayClick(${d})">${d}</div>`;
+  }
+  html += '</div>';
+  if (calEvents[today.getDate()]) {
+    html += `<div style="margin-top:8px;padding:12px;background:rgba(79,195,247,0.08);border:1px solid rgba(79,195,247,0.2);border-radius:12px;">
+      <div style="font-size:0.72rem;color:#4fc3f7;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Today's Events</div>
+      ${calEvents[today.getDate()].map(e=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);"><div style="width:8px;height:8px;border-radius:50%;background:${e.c};flex-shrink:0;"></div><div style="font-size:0.83rem;color:var(--text);">${e.t}</div></div>`).join('')}
+    </div>`;
+  }
+  wrap.innerHTML = html;
+}
+
+function calMove(dir) { calDate = new Date(calDate.getFullYear(), calDate.getMonth()+dir, 1); renderCal(); }
+function calDayClick(d) { showNotif('Calendar',`Add event for ${d} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][calDate.getMonth()]}? Click to confirm.`,'📅'); }
+
+// ══════════════════════════════════════════
+// MAPS
+// ══════════════════════════════════════════
+function openMaps() {
+  createWindow('maps','Maps','🗺️',900,580,`
+    <div class="maps-body">
+      <div class="maps-search-bar">
+        <span style="font-size:1rem;color:var(--text-muted)">🔍</span>
+        <input class="maps-search-input" id="maps-search" placeholder="Search for a place…" onkeydown="if(event.key==='Enter')mapsSearch(this.value)">
+        <div class="fe-btn" onclick="mapsSearch(document.getElementById('maps-search').value)">Go</div>
+        <div class="fe-btn" onclick="showNotif('Maps','Navigation started!','🧭')">🧭 Navigate</div>
+        <div class="fe-btn" onclick="showNotif('Maps AI','Copilot+ finding best route!','🤖')">🤖 AI Route</div>
+      </div>
+      <div class="maps-canvas-wrap">
+        <canvas id="maps-canvas" style="width:100%;height:100%;display:block;"></canvas>
+        <div style="position:absolute;top:12px;right:12px;display:flex;flex-direction:column;gap:6px;">
+          <div class="paint-tool-btn" onclick="showNotif('Maps','Zoomed in!','🔍')" style="background:rgba(8,14,38,0.9);border:1px solid rgba(255,255,255,0.1);">+</div>
+          <div class="paint-tool-btn" onclick="showNotif('Maps','Zoomed out!','🔍')" style="background:rgba(8,14,38,0.9);border:1px solid rgba(255,255,255,0.1);">−</div>
+        </div>
+        <div class="maps-pin" id="maps-pin" style="left:50%;top:50%;">📍</div>
+        <div class="maps-info-card" id="maps-info">
+          <div style="font-size:0.75rem;color:#4fc3f7;margin-bottom:4px;">📍 Current Location</div>
+          <div style="font-size:1rem;font-weight:600;color:var(--text);margin-bottom:4px;">Guwahati, Assam</div>
+          <div style="font-size:0.8rem;color:var(--text-muted);">India · 26.1445°N 91.7362°E</div>
+          <div style="display:flex;gap:8px;margin-top:10px;">
+            <div class="fe-btn" style="font-size:0.75rem;" onclick="showNotif('Maps','Directions loaded!','🧭')">🧭 Directions</div>
+            <div class="fe-btn" style="font-size:0.75rem;" onclick="showNotif('Maps','Nearby places found!','🔍')">🔍 Nearby</div>
+          </div>
+        </div>
+      </div>
+    </div>`);
+  renderMapsCanvas();
+}
+
+function renderMapsCanvas() {
+  const canvas = document.getElementById('maps-canvas');
+  if (!canvas) return;
+  canvas.width = canvas.parentElement.offsetWidth;
+  canvas.height = canvas.parentElement.offsetHeight;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+
+  // Map background
+  ctx.fillStyle = '#0d1f35';
+  ctx.fillRect(0, 0, w, h);
+
+  // Grid lines (streets)
+  ctx.strokeStyle = 'rgba(79,195,247,0.07)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < w; x += 60) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+  for (let y = 0; y < h; y += 60) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+
+  // Roads
+  const roads = [{x1:.1,y1:.5,x2:.9,y2:.5,w:5},{x1:.5,y1:.1,x2:.5,y2:.9,w:5},
+    {x1:.2,y1:.2,x2:.8,y2:.8,w:3},{x1:.8,y1:.2,x2:.2,y2:.8,w:3},
+    {x1:.3,y1:.1,x2:.3,y2:.9,w:2},{x1:.7,y1:.1,x2:.7,y2:.9,w:2}];
+  roads.forEach(r => {
+    ctx.strokeStyle=`rgba(255,255,255,${0.1+r.w*0.02})`;ctx.lineWidth=r.w;
+    ctx.beginPath();ctx.moveTo(r.x1*w,r.y1*h);ctx.lineTo(r.x2*w,r.y2*h);ctx.stroke();
+  });
+
+  // Water body (river)
+  ctx.fillStyle='rgba(79,195,247,0.12)';
+  ctx.beginPath();ctx.ellipse(w*0.35,h*0.65,w*0.2,h*0.08,0.2,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='rgba(79,195,247,0.25)';ctx.lineWidth=2;ctx.stroke();
+
+  // Parks
+  ctx.fillStyle='rgba(0,204,136,0.15)';
+  ctx.fillRect(w*.1,h*.15,w*.15,h*.12);
+  ctx.fillRect(w*.7,h*.6,w*.12,h*.1);
+
+  // Buildings
+  const blds=[{x:.2,y:.3,w:.08,h:.07},{x:.45,y:.2,w:.06,h:.05},{x:.6,y:.35,w:.09,h:.06},
+    {x:.3,y:.55,w:.07,h:.06},{x:.65,y:.2,w:.05,h:.08},{x:.8,y:.45,w:.06,h:.05}];
+  blds.forEach(b=>{
+    ctx.fillStyle='rgba(255,255,255,0.06)';ctx.fillRect(b.x*w,b.y*h,b.w*w,b.h*h);
+    ctx.strokeStyle='rgba(255,255,255,0.1)';ctx.lineWidth=1;ctx.strokeRect(b.x*w,b.y*h,b.w*w,b.h*h);
+  });
+}
+
+function mapsSearch(q) {
+  if (!q) return;
+  const pin = document.getElementById('maps-pin');
+  const info = document.getElementById('maps-info');
+  if (pin) { pin.style.left=(30+Math.random()*40)+'%'; pin.style.top=(20+Math.random()*40)+'%'; }
+  if (info) info.innerHTML=`<div style="font-size:0.75rem;color:#4fc3f7;margin-bottom:4px;">🔍 Search Result</div><div style="font-size:1rem;font-weight:600;color:var(--text);margin-bottom:4px;">${q}</div><div style="font-size:0.8rem;color:var(--text-muted);">Located in Assam, India</div><div style="display:flex;gap:8px;margin-top:10px;"><div class="fe-btn" style="font-size:0.75rem;" onclick="showNotif('Maps','Directions to ${q} loaded!','🧭')">🧭 Go</div></div>`;
+}
+
+// ══════════════════════════════════════════
+// TEAMS
+// ══════════════════════════════════════════
+function openTeams() {
+  const channels = ['# General','# Development','# Design','# AI/ML','# Announcements'];
+  const members = [{n:'Alice Chen',a:'AC',c:'#4fc3f7'},{n:'Bob Kumar',a:'BK',c:'#7c6fff'},{n:'Sara Li',a:'SL',c:'#00cc88'},{n:'Mike Patel',a:'MP',c:'#ff9944'}];
+  const msgs = [
+    {from:'Alice Chen',a:'AC',c:'#4fc3f7',body:"Hey team! Just updated the Windows 12 UI specs. The Copilot+ integration looks amazing! 🚀"},
+    {from:'Bob Kumar',a:'BK',c:'#7c6fff',body:"Great work Alice! The aurora wallpaper effect turned out really polished."},
+    {from:'Sara Li',a:'SL',c:'#00cc88',body:"NPU benchmarks are in — we're hitting 42 TOPS on the Snapdragon X Elite. Way beyond the 40 TOPS requirement!"},
+    {from:'Mike Patel',a:'MP',c:'#ff9944',body:"Copilot+ AI latency is under 50ms on-device. Users won't even know it's running! 🤖"},
+    {from:'You',a:'W',c:'linear-gradient(135deg,#4fc3f7,#7c6fff)',body:"Fantastic progress everyone! Let's ship Windows 12 CorePC on schedule. The AI features are going to be a game-changer.",me:true},
+  ];
+
+  createWindow('teams','Microsoft Teams','💬',900,580,`
+    <div class="teams-layout">
+      <div class="teams-sidebar">
+        <div style="padding:14px 12px;border-bottom:1px solid var(--border);">
+          <div style="font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:4px;">Windows 12 Team</div>
+          <div style="font-size:0.72rem;color:#00cc88">● 4 members online</div>
+        </div>
+        <div style="padding:10px;">
+          <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:8px;font-weight:700;">Channels</div>
+          ${channels.map((c,i)=>`<div style="padding:7px 10px;border-radius:8px;font-size:0.82rem;color:${i===0?'var(--text)':'var(--text-muted)'};cursor:pointer;background:${i===0?'rgba(79,195,247,0.1)':'transparent'};transition:background 0.12s;" onclick="showNotif('Teams','Switched to ${c}','💬')" onmouseenter="if(${i}!==0)this.style.background='rgba(255,255,255,0.05)'" onmouseleave="if(${i}!==0)this.style.background=''">${c}</div>`).join('')}
+          <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin:14px 0 8px;font-weight:700;">Members</div>
+          ${members.map(m=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:8px;cursor:pointer;" onmouseenter="this.style.background='rgba(255,255,255,0.05)'" onmouseleave="this.style.background=''"><div style="width:28px;height:28px;border-radius:50%;background:${m.c};display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:700;color:#fff;flex-shrink:0;">${m.a}</div><div style="font-size:0.8rem;color:var(--text);">${m.n}</div></div>`).join('')}
+        </div>
+      </div>
+      <div class="teams-chat-area">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;">
+          <div style="font-size:0.9rem;font-weight:600;color:var(--text)"># General</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);margin-left:4px">Windows 12 Team · 4 members</div>
+          <div style="flex:1"></div>
+          <div class="fe-btn" onclick="showNotif('Teams','Starting video call…','📹')">📹 Meet</div>
+          <div class="fe-btn" onclick="showNotif('Teams AI','Copilot+ is summarizing this chat!','🤖')">🤖 Summarize</div>
+        </div>
+        <div class="teams-msgs" id="teams-msgs">
+          ${msgs.map(m=>`<div class="teams-msg"><div class="teams-avatar" style="background:${m.c};color:#fff;">${m.a}</div><div class="teams-msg-content${m.me?' me':''}"><div class="sender">${m.from} <span style="font-weight:400;font-size:0.72rem;color:var(--text-muted);">${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></div><div class="body">${m.body}</div></div></div>`).join('')}
+        </div>
+        <div class="teams-input-row">
+          <input class="teams-input" id="teams-input" placeholder="Message #General… (Press Enter to send)" onkeydown="if(event.key==='Enter')sendTeamsMsg()">
+          <div class="fe-btn" onclick="showNotif('Teams','Attachment added!','📎')">📎</div>
+          <div class="fe-btn" onclick="sendTeamsMsg()">➤</div>
+        </div>
+      </div>
+    </div>`);
+}
+
+function sendTeamsMsg() {
+  const inp = document.getElementById('teams-input');
+  const msgs = document.getElementById('teams-msgs');
+  if (!inp || !msgs || !inp.value.trim()) return;
+  const msg = document.createElement('div');
+  msg.className = 'teams-msg';
+  msg.innerHTML=`<div class="teams-avatar" style="background:linear-gradient(135deg,#4fc3f7,#7c6fff);color:#fff;">W</div><div class="teams-msg-content me"><div class="sender">You <span style="font-weight:400;font-size:0.72rem;color:var(--text-muted);">${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></div><div class="body">${inp.value}</div></div>`;
+  msgs.appendChild(msg);
+  msgs.scrollTop = msgs.scrollHeight;
+  inp.value = '';
+  setTimeout(() => {
+    const replies = ['Sounds great! 🙌','Copilot+ AI agrees! 🤖','Let\'s ship it! 🚀','On it! Will update the docs.','Amazing work team! 💜'];
+    const members2 = [{n:'Alice Chen',a:'AC',c:'#4fc3f7'},{n:'Bob Kumar',a:'BK',c:'#7c6fff'},{n:'Sara Li',a:'SL',c:'#00cc88'}];
+    const m = members2[Math.floor(Math.random()*members2.length)];
+    const r = document.createElement('div');
+    r.className='teams-msg';
+    r.innerHTML=`<div class="teams-avatar" style="background:${m.c};color:#fff;">${m.a}</div><div class="teams-msg-content"><div class="sender">${m.n} <span style="font-weight:400;font-size:0.72rem;color:var(--text-muted);">${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></div><div class="body">${replies[Math.floor(Math.random()*replies.length)]}</div></div>`;
+    msgs.appendChild(r);
+    msgs.scrollTop=msgs.scrollHeight;
+  }, 1200);
+}
+
+// ══════════════════════════════════════════
+// KEYBOARD SHORTCUTS
+// ══════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeStart(); closeCtx(); }
+  if (e.ctrlKey && e.key === 'F1') toggleWidgets();
+  if (e.key === 'F5') showNotif('Windows 12','Desktop refreshed','🔄');
+  if (e.ctrlKey && e.shiftKey && e.key === 'N') openApp('notepad');
+});
+
+// ══════════════════════════════════════════
+// DOUBLE CLICK DESKTOP
+// ══════════════════════════════════════════
+document.getElementById('desktop').addEventListener('dblclick', e => {
+  if (!e.target.closest('.desk-icon') && !e.target.closest('#taskbar'))
+    openApp('explorer');
+});
+
+// ══════════════════════════════════════════
+// STARTUP
+// ══════════════════════════════════════════
+setTimeout(()=>showNotif('Windows 12','Welcome! Copilot+ AI is active and running on your NPU.','🤖'), 1200);
+setTimeout(()=>showNotif('Windows Update','Windows 12 CorePC v12.0.26100 — Up to date ✓','✅'), 3800);
+setTimeout(()=>showNotif('Copilot+ AI','Smart Recall is active. I\'ve catalogued 1,247 items from today.','🧠'), 6500);
+setTimeout(()=>showNotif('Windows Defender','Real-time protection is on. 0 threats found.','🛡️'), 9000);
+</script>
+</body>
+</html>
